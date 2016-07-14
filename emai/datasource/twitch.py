@@ -1,10 +1,10 @@
-from irc.client import Reactor
-import re
 from emai.utils import log, config, output_stream
 from livestreamer import Livestreamer, StreamError, PluginError, NoPluginError
 from enum import Enum
 import requests
 from emai.exceptions import ResourceUnavailableException
+import irc3
+import re
 
 class TwitchAPI(object):
     base_url = 'https://api.twitch.tv/kraken'
@@ -51,55 +51,60 @@ class StreamClient(object):
 
 
 class ChatClient(object):
-    def __init__(self, connect_handler=None, message_handler=None):
-        self.reactor = Reactor()
-        self.connection = self.reactor.server()
-        self._connect_handler = connect_handler
-        self._message_handler = message_handler
-        self.reactor.add_global_handler('welcome', self.on_connect, 0)
-        self.reactor.add_global_handler('pubmsg', self.on_message_event, 10)
-        self.reactor.add_global_handler('disconnect', self.on_disconnect, 0)
-
-    def start(self):
-        """Start the IRC client."""
-        self.connection.connect(
-            config.get('twitch', 'server'),
-            config.getint('twitch', 'port'),
-            config.get('twitch', 'username'),
-            config.get('twitch', 'password')
+    def __init__(self,  message_handler=None):
+        bot_config = dict(
+            nick=config.get('twitch', 'username'),
+            username=config.get('twitch', 'username'),
+            host=config.get('twitch', 'host'),
+            port=config.getint('twitch', 'port'),
+            ssl=config.getboolean('twitch', 'ssl'),
+            includes=['irc3.plugins.core', 'irc3.plugins.autojoins', __name__],
+            autojoins=config.get('twitch', 'default_channel', fallback=[]).split(','),
+            password=config.get('twitch', 'password'),
         )
-        self.reactor.process_forever()
+        self.bot = irc3.IrcBot.from_config(bot_config)
+        self.bot.message_handler = message_handler
+        self.bot.run(forever=False)
 
     def join_channel(self, channel):
-        self.connection.join('#{}'.format(channel))
+        self.bot.join(channel)
 
-    def on_connect(self, connection, event):
-        connection.cap('REQ', 'twitch.tv/membership')
-        connection.cap('REQ', 'twitch.tv/tags')
-        if self._connect_handler:
-            self._connect_handler()
 
-    def on_disconnect(self, connection, event):
-        log.error(('ChatClient disconnected', event))
+@irc3.plugin
+class ChatClientLoggingPlugin(object):
 
-    def on_message_event(self, connection, event):
-        message = self.parse_message(event)
-        if message:
-            self._message_handler(message)
-        else:
-            log.debug(('Unlogged message', event))
+    def __init__(self, context):
+        self.context = context
 
-    def parse_message(self, event):
-        if not event or not event.arguments or not event.tags:
+    @irc3.event(irc3.rfc.CONNECTED)
+    def connected(self, **kw):
+        self.context.send('CAP REQ :twitch.tv/membership')
+        self.context.send('CAP REQ :twitch.tv/tags')
+
+    @irc3.event(irc3.rfc.JOIN)
+    def welcome(self, mask, channel, **kw):
+        if channel:
+            log.info('Joined channel: {}'.format(channel))
+
+    @irc3.event(irc3.rfc.PRIVMSG)
+    def on_privmsg(self, mask=None, data=None, tags=None, **kw):
+        if data and kw and tags:
+            message = self.process_message(data, tags)
+            if message:
+                self.context.message_handler(message)
+
+    @staticmethod
+    def process_message(data, tagstring):
+        if not data or not tagstring:
             return None
 
-        channel = next((tag['value'] for tag in event.tags if tag['key'] == 'room-id'), None)
-        user_id = next((tag['value'] for tag in event.tags if tag['key'] == 'user-id'), None)
-        username = next((tag['value'] for tag in event.tags if tag['key'] == 'display-name'), None)
-        emoticon_string = next((tag['value'] for tag in event.tags if tag['key'] == 'emotes'), None)
-        emoticons = [{'identifier': match[0], 'occurrences': match[1].split(',')} for match in
-                     re.findall('(\d*):((?:\d*-\d*,?)+)', emoticon_string)] if emoticon_string else None
-        identifier = next((tag['value'] for tag in event.tags if tag['key'] == 'id'), None)
+        tags = dict(tag.split('=') for tag in tagstring.split(';'))
+        channel = tags.get('room-id', None)
+        user_id = tags.get('user-id', None)
+        username = tags.get('display-name', None)
+        emoticon_string = tags.get('emotes', None)
+        emoticons = [{'identifier': match[0], 'occurrences': match[1].split(',')} for match in re.findall('(\d*):((?:\d*-\d*,?)+)', emoticon_string)]
+        identifier = tags.get('id', None)
 
         if not channel or not user_id:
             return None
@@ -107,8 +112,10 @@ class ChatClient(object):
         return {
             'channel': channel,
             'user_id': user_id,
-            'content': event.arguments[0],
+            'content': data,
             'username': username,
             'emoticons': emoticons,
             'identifier': identifier
         }
+
+

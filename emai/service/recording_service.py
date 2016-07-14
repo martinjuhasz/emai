@@ -6,13 +6,8 @@ from emai.datasource.persistence import Recording
 
 class RecordingService(object):
     def __init__(self):
-        self.recorder = Recorder(connect_handler=self.on_recorder_connect)
+        self.recorder = Recorder()
         self.recorder.start()
-
-    def on_recorder_connect(self):
-        log.info('Recorder started')
-        self.record_channel('rocketbeanstv')
-        self.record_channel('rocketbeanstv')
 
     def record_channel(self, channel):
         channel_details = TwitchAPI.channel_exists(channel)
@@ -34,10 +29,6 @@ class RecordingService(object):
         )
         recording.save()
         return recording
-
-    @staticmethod
-    def get_recordings():
-        return Recording.objects
 
     def stop_recording(self, recording):
         pass

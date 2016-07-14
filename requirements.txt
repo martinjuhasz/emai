@@ -1,0 +1,4 @@
+aiohttp==0.21.6
+irc3==0.9.3
+livestreamer==1.12.2
+mongoengine==0.10.6

@@ -1,0 +1,3 @@
+
+class ResourceUnavailableException(Exception):
+    pass

@@ -1,15 +1,14 @@
 import asyncio
 from aiohttp import web
-from emai import routes
-from emai import recording
+from emai import resources
+from emai.services import recording
 from emai import persistence
 from aiohttp_utils import negotiation, path_norm
 
 
 def create_app():
     app = web.Application(debug=True)
-    persistence.setup(app)
-    routes.setup(app)  # add routing
+    resources.setup(app)  # add routing
     recording.setup(app)  # provide recorder
     negotiation.setup(app, renderers=persistence.persistence_renderer())  # automatic json responses
     path_norm.setup(app)  # normalize paths

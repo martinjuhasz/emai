@@ -5,6 +5,7 @@ import requests
 from emai.exceptions import ResourceUnavailableException
 import irc3
 import re
+import aiohttp
 
 class TwitchAPI(object):
     base_url = 'https://api.twitch.tv/kraken'
@@ -14,11 +15,23 @@ class TwitchAPI(object):
     }
 
     @staticmethod
-    def channel_exists(channel):
-        request = requests.get('{base_url}/channels/{channel}'.format(base_url=TwitchAPI.base_url, channel=channel), headers=TwitchAPI.headers)
-        if not request or not request.ok or not request.json():
-            raise ResourceUnavailableException('Channel not found')
-        return request.json()
+    async def make_request(url, method='GET', **kwargs):
+        url = url.lstrip('/')
+        kwargs.setdefault('params', {})
+        kwargs.setdefault('headers', {})
+        kwargs['headers'].update(TwitchAPI.headers)
+
+        full_url = '{base_url}/{url}'.format(base_url=TwitchAPI.base_url, url=url)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.request(method.upper(), full_url, **kwargs) as resposne:
+                json = await resposne.json()
+                return json
+
+    @staticmethod
+    def get_channel_details(channel):
+        content = TwitchAPI.make_request('/channels/{}'.format(channel))
+        return content
 
 
 class StreamClient(object):
@@ -70,6 +83,9 @@ class ChatClient(object):
     def join_channel(self, channel):
         self.bot.join(channel)
 
+    def leave_channel(self, channel):
+        self.bot.part(channel)
+
 
 @irc3.plugin
 class ChatClientLoggingPlugin(object):
@@ -113,7 +129,7 @@ class ChatClientLoggingPlugin(object):
             return None
 
         return {
-            'channel': channel,
+            'channel_id': channel,
             'user_id': user_id,
             'content': data,
             'username': username,

@@ -51,19 +51,20 @@ class StreamClient(object):
 
 
 class ChatClient(object):
-    def __init__(self,  message_handler=None):
+    def __init__(self,  message_handler=None, connect_handler=None):
         bot_config = dict(
             nick=config.get('twitch', 'username'),
             username=config.get('twitch', 'username'),
             host=config.get('twitch', 'host'),
             port=config.getint('twitch', 'port'),
             ssl=config.getboolean('twitch', 'ssl'),
-            includes=['irc3.plugins.core', 'irc3.plugins.autojoins', __name__],
-            autojoins=config.get('twitch', 'default_channel', fallback=[]).split(','),
+            includes=['irc3.plugins.core', __name__],
             password=config.get('twitch', 'password'),
+            level='DEBUG'
         )
         self.bot = irc3.IrcBot.from_config(bot_config)
         self.bot.message_handler = message_handler
+        self.bot.connect_handler = connect_handler
         self.bot.run(forever=False)
 
     def join_channel(self, channel):
@@ -80,6 +81,8 @@ class ChatClientLoggingPlugin(object):
     def connected(self, **kw):
         self.context.send('CAP REQ :twitch.tv/membership')
         self.context.send('CAP REQ :twitch.tv/tags')
+        if self.context.connect_handler:
+            self.context.connect_handler()
 
     @irc3.event(irc3.rfc.JOIN)
     def welcome(self, mask, channel, **kw):
@@ -87,11 +90,11 @@ class ChatClientLoggingPlugin(object):
             log.info('Joined channel: {}'.format(channel))
 
     @irc3.event(irc3.rfc.PRIVMSG)
-    def on_privmsg(self, mask=None, data=None, tags=None, **kw):
+    async def on_privmsg(self, mask=None, data=None, tags=None, **kw):
         if data and kw and tags:
             message = self.process_message(data, tags)
-            if message:
-                self.context.message_handler(message)
+            if message and self.context.message_handler:
+                await self.context.message_handler(message)
 
     @staticmethod
     def process_message(data, tagstring):

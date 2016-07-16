@@ -1,11 +1,13 @@
-from emai.persistence import Recording
-from emai import services
-from aiohttp_utils import Response
-from emai.persistence import load_json, to_objectid
-from emai.datasource.twitch import TwitchAPI
-from umongo import ValidationError
-from emai.utils import log
 from datetime import datetime
+
+from aiohttp_utils import Response
+from umongo import ValidationError
+
+from emai import services
+from emai.datasource import TwitchAPI
+from emai.persistence import Recording
+from emai.persistence import load_json, to_objectid
+from emai.utils import log
 
 
 def setup(app):

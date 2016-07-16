@@ -1,11 +1,11 @@
 from emai.utils import log, config, output_stream
-from livestreamer import Livestreamer, StreamError, PluginError, NoPluginError
+from livestreamer import Livestreamer, PluginError, NoPluginError
 from enum import Enum
-import requests
 from emai.exceptions import ResourceUnavailableException
 import irc3
 import re
 import aiohttp
+
 
 class TwitchAPI(object):
     base_url = 'https://api.twitch.tv/kraken'
@@ -29,9 +29,13 @@ class TwitchAPI(object):
                 return json
 
     @staticmethod
-    def get_channel_details(channel):
-        content = TwitchAPI.make_request('/channels/{}'.format(channel))
+    async def get_channel_details(channel):
+        content = await TwitchAPI.make_request('/channels/{}'.format(channel))
         return content
+
+    @staticmethod
+    async def get_channel_streams(channel):
+        content = await TwitchAPI.make_request()
 
 
 class StreamClient(object):

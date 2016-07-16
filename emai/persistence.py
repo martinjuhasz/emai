@@ -4,7 +4,6 @@ from umongo import Instance, Document, EmbeddedDocument, fields
 from bson import ObjectId
 import json
 from functools import partial
-from aiohttp.web import json_response
 
 db = AsyncIOMotorClient()['emai']
 instance = Instance(db)
@@ -18,6 +17,7 @@ def render_json(request, data):
     dumps = partial(json.dumps, cls=MongoJsonEncoder, indent=True)
     json_string = dumps(data)
     return json_string.encode('utf-8')
+
 
 async def load_json(request):
     text = await request.text()

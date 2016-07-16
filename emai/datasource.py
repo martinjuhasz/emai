@@ -1,11 +1,12 @@
 from emai.utils import log, config, output_stream
-from livestreamer import Livestreamer, PluginError, NoPluginError
+from livestreamer import Livestreamer, PluginError, NoPluginError, StreamError
 from enum import Enum
 from emai.exceptions import ResourceUnavailableException
 import irc3
 import re
 import aiohttp
-
+from functools import partial
+from itertools import chain
 
 class TwitchAPI(object):
     base_url = 'https://api.twitch.tv/kraken'
@@ -65,6 +66,48 @@ class StreamClient(object):
             raise ResourceUnavailableException('Channel quality not found')
 
         return streams[quality.value]
+
+    @staticmethod
+    def save_stream(stream=None, output=None, stop_event=None):
+        if not stream or not output:
+            ResourceUnavailableException('Stream or output source not found')
+
+        chunk_size = 1024
+        stream_fd = None
+        try:
+            stream_fd, prebuffer = StreamClient.open_stream(stream)
+            stream_iterator = chain(
+                [prebuffer],
+                iter(partial(stream_fd.read, chunk_size), b"")
+            )
+            log.info('Stream recording started.')
+            for data in stream_iterator:
+                if stop_event.is_set():
+                    break
+                output.write(data)
+        except ValueError or TypeError as error:
+            log.error('Error writing stream: {}'.format(error))
+        finally:
+            if stream_fd:
+                stream_fd.close()
+            log.info('Stream recording stopped.')
+
+    @staticmethod
+    def open_stream(stream):
+        try:
+            stream_fd = stream.open()
+        except StreamError as error:
+            raise ResourceUnavailableException('Could not open stream: {0}'.format(error))
+
+        try:
+            prebuffer = stream_fd.read(8192)
+        except IOError as err:
+            raise ResourceUnavailableException('Failed to read data from stream: {0}'.format(err))
+
+        if not prebuffer:
+            raise ResourceUnavailableException('No data returned from stream')
+
+        return stream_fd, prebuffer
 
 
 class ChatClient(object):

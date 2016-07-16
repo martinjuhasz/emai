@@ -40,6 +40,10 @@ class RecorderResource(object):
         if not channel_details:
             return Response(status=422)
 
+        # start recording
+        recording_service = request.app[services.recording.APP_SERVICE_KEY]
+        video_file_id = await recording_service.start_recording(channel_details['name'])
+
         # save new recording
         try:
             recording = Recording(
@@ -47,17 +51,15 @@ class RecorderResource(object):
                 channel_id=channel_details['_id'],
                 display_name=channel_details['display_name'],
                 language=channel_details['language'],
-                started=datetime.utcnow()
+                started=datetime.utcnow(),
+                video_id=str(video_file_id)
             )
             await recording.commit()
         except ValidationError as error:
             log.error(error)
             return Response(status=500)
 
-        # start recording
-        recording_service = request.app[services.recording.APP_SERVICE_KEY]
-        recording_service.start_recording(recording.channel_name)
-        return Response()
+        return Response(recording)
 
     @staticmethod
     async def stop_recording(request):

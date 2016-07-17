@@ -13,7 +13,9 @@ instance = Instance(db)
 
 
 def persistence_renderer():
-    return {'application/json': render_json}
+    return {
+        'application/json': render_json
+    }
 
 
 def render_json(request, data):
@@ -45,6 +47,11 @@ async def create_async_file():
     grid_fs = AsyncIOMotorGridFS(db)
     file = await grid_fs.new_file()
     return file
+
+
+def get_async_file_descriptor():
+    grid_fs = AsyncIOMotorGridFS(db)
+    return grid_fs
 
 
 class MongoJsonEncoder(json.JSONEncoder):

@@ -7,6 +7,8 @@ import re
 import aiohttp
 from functools import partial
 from itertools import chain
+from aiohttp.web import Response, StreamResponse
+
 
 class TwitchAPI(object):
     base_url = 'https://api.twitch.tv/kraken'
@@ -90,6 +92,7 @@ class StreamClient(object):
         finally:
             if stream_fd:
                 stream_fd.close()
+                output.close()
             log.info('Stream recording stopped.')
 
     @staticmethod

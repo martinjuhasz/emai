@@ -40,7 +40,7 @@ class Recorder(object):
 
     async def record_channel(self, channel):
         self._chat_client.join_channel('#{}'.format(channel))
-        file_id = await self.record_stream(channel)
+        file_id = None #await self.record_stream(channel)
         return file_id
 
     async def record_stream(self, channel):
@@ -77,6 +77,6 @@ class Recorder(object):
             chat_message['created'] = datetime.utcnow()
             message = Message(**chat_message)
             await message.commit()
-            #log.info('Message saved:Time={message.created} Channel={message.channel_id} User={message.user_id}({message.username})'.format(message=message))
+            log.info('Message saved:Time={message.created} Channel={message.channel_id} User={message.user_id}({message.username})'.format(message=message))
         except ValidationError as error:
             log.warn('Message not saved: {}'.format(chat_message))

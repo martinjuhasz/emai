@@ -87,4 +87,13 @@ class Recording(Document):
     started = fields.DateTimeField(required=True)
     stopped = fields.DateTimeField()
     video_id = fields.StrField()
+    data_sets = fields.ListField(fields.IntField)
 
+
+@instance.register
+class Bag(Document):
+    interval = fields.IntField(required=True)
+    recording_id = fields.ObjectIdField(required=True)
+    words = fields.ListField(fields.StrField, required=True)
+    started = fields.DateTimeField(required=True)
+    messages = fields.ListField(fields.ObjectIdField, required=True)

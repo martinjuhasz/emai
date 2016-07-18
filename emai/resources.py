@@ -4,14 +4,18 @@ from umongo import ValidationError
 from emai import services
 from emai.datasource import TwitchAPI
 from emai.persistence import Recording, load_json, to_objectid, get_async_file_descriptor
-from emai.utils import log
+from emai.utils import log, config
 from aiohttp.web import StreamResponse
+from emai.services.datasets import DataSetService
+from emai.exceptions import ResourceExistsException, ResourceUnavailableException
+
 
 def setup(app):
     app.router.add_route('GET', '/recordings', RecorderResource.get_recordings)
     app.router.add_route('POST', '/recordings', RecorderResource.create_recording)
     app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording)
     app.router.add_route('GET', '/recordings/{recording_id}/video', RecorderResource.get_video)
+    app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set)
 
     app.router.add_route('GET', '/videos/{video_id}', VideoResource.get_video)
 
@@ -43,13 +47,14 @@ class RecorderResource(Resource):
         if not body_data or not 'channel' in body_data:
             return Response(status=400)
 
+        channel_name = body_data['channel'].lower()
         # check if channel is already recording
-        started_recording = await Recording.find_one({'channel_name': body_data['channel'], 'stopped': None})
+        started_recording = await Recording.find_one({'channel_name': channel_name, 'stopped': None})
         if started_recording:
             return Response(status=302)
 
         # check if channel exists on twitch
-        channel_details = await TwitchAPI.get_channel_details(body_data['channel'])
+        channel_details = await TwitchAPI.get_channel_details(channel_name)
         if not channel_details:
             return Response(status=422)
 
@@ -124,6 +129,33 @@ http://localhost:8080/videos/{video_id}
 
         return response
 
+    @staticmethod
+    async def create_data_set(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        if not recording_id:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
+        if not recording:
+            return Response(status=404)
+
+        # check if malformed request
+        body_data = await load_json(request)
+        if not body_data or not 'interval' in body_data:
+            return Response(status=400)
+
+        try:
+            interval = int(body_data['interval'])
+            data_set_service = request.app[services.datasets.APP_SERVICE_KEY]
+            await data_set_service.generate_data_set(recording, interval)
+            return Response()
+        except ValueError:
+            return Response(status=400)
+        except ResourceExistsException:
+            return Response(status=409)
+
 
 class VideoResource(Resource):
 
@@ -144,11 +176,12 @@ class VideoResource(Resource):
 
         while True:
             try:
-                chunk = await video_stream.read(size=4096)
+                #chunk = await video_stream.read(size=4096)
+                chunk = await video_stream.readchunk()
                 if not chunk:
                     break
                 stream_response.write(chunk)
-                #stream_response.write()
+                await stream_response.drain()
             except Exception as e:
                 print(e)
                 break

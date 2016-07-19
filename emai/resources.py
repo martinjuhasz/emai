@@ -3,7 +3,7 @@ from aiohttp_utils import Response
 from umongo import ValidationError
 from emai import services
 from emai.datasource import TwitchAPI
-from emai.persistence import Recording, load_json, to_objectid, get_async_file_descriptor
+from emai.persistence import Recording, Bag, load_json, to_objectid, get_async_file_descriptor
 from emai.utils import log, config
 from aiohttp.web import StreamResponse
 from emai.services.datasets import DataSetService
@@ -16,25 +16,25 @@ def setup(app):
     app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording)
     app.router.add_route('GET', '/recordings/{recording_id}/video', RecorderResource.get_video)
     app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set)
+    app.router.add_route('POST', '/recordings/{recording_id}/data-sets/{interval}/sample',
+                         RecorderResource.sample_data_set)
 
     app.router.add_route('GET', '/videos/{video_id}', VideoResource.get_video)
 
 
 class Resource(object):
-
     @staticmethod
     async def create_video_stream_response(request):
         stream = StreamResponse()
         stream.headers['Content-Type'] = 'video/mp2t'
         stream.headers['Cache-Control'] = 'no-cache, no-store'
         stream.headers['Connection'] = 'keep-alive'
-        #stream.enable_chunked_encoding()
-        #await stream.prepare(request)
+        # stream.enable_chunked_encoding()
+        # await stream.prepare(request)
         return stream
 
 
 class RecorderResource(Resource):
-
     @staticmethod
     async def get_recordings(request):
         recordings = await Recording.find().to_list(None)
@@ -156,9 +156,26 @@ http://localhost:8080/videos/{video_id}
         except ResourceExistsException:
             return Response(status=409)
 
+    @staticmethod
+    async def sample_data_set(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        interval = int(request.match_info['interval'])
+        if not recording_id or not interval:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
+        if not recording or interval not in recording.data_sets:
+            return Response(status=404)
+
+        bags = await DataSetService.get_random_samples(recording_id, interval)
+        return Response(bags)
+
+
+
 
 class VideoResource(Resource):
-
     @staticmethod
     async def get_video(request):
         # check url parameters
@@ -176,7 +193,7 @@ class VideoResource(Resource):
 
         while True:
             try:
-                #chunk = await video_stream.read(size=4096)
+                # chunk = await video_stream.read(size=4096)
                 chunk = await video_stream.readchunk()
                 if not chunk:
                     break

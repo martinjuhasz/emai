@@ -56,7 +56,8 @@ def get_async_file_descriptor():
 
 class MongoJsonEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, Recording):
+        # TODO: Why does this not work? => if isinstance(obj, Document):
+        if isinstance(obj, Recording) or isinstance(obj, Bag):
             return obj.dump()
         return json.JSONEncoder.default(self, obj)
 
@@ -97,3 +98,36 @@ class Bag(Document):
     words = fields.ListField(fields.StrField, required=True)
     started = fields.DateTimeField(required=True)
     messages = fields.ListField(fields.ObjectIdField, required=True)
+    message_count = fields.StrField()
+
+    @staticmethod
+    def find_sample(recording_id, interval, limit=None, samples=None):
+        pipeline = [
+            {'$match': {
+                'recording_id': recording_id,
+                'interval': interval
+            }},
+            {'$project': {
+                'interval': 1,
+                'recording_id': 1,
+                'words': 1,
+                'started': 1,
+                'messages': 1,
+                'message_count': {'$size': {'$ifNull': ['$messages', []]}}
+            }},
+            {'$sort': {'message_count': -1}},
+            {'$project': {
+                'interval': 1,
+                'recording_id': 1,
+                'words': 1,
+                'started': 1,
+                'messages': 1
+            }}
+        ]
+        if limit:
+            pipeline.append({'$limit': limit})
+        if samples:
+            pipeline.append({'$sample': {'size': samples}})
+
+        future = Bag.collection.aggregate(pipeline)
+        return future

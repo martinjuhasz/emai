@@ -1,7 +1,6 @@
 from emai.persistence import Message, Bag
 from emai.exceptions import ResourceUnavailableException, ResourceExistsException
-from emai.utils import config
-import functools
+from emai.utils import config, log
 import asyncio
 
 APP_SERVICE_KEY = 'emai_data_set_service'
@@ -23,8 +22,8 @@ class DataSetService(object):
         if interval not in range(config.getint('dataset', 'interval_min'), config.getint('dataset', 'interval_max')):
             raise ValueError
 
-        #recording.data_sets.append(interval)
-        #await recording.commit()
+        recording.data_sets.append(interval)
+        await recording.commit()
 
         asyncio.ensure_future(self.start_generation(recording, interval))
 
@@ -52,9 +51,17 @@ class DataSetService(object):
             }}
         ]
 
+        filter_commands = config.getboolean('dataset', 'filter_commands')
+        filter_replies = config.getboolean('dataset', 'filter_replies')
         groups = Message.collection.aggregate(pipeline)
+        count = 0
         async for group in groups:
-            words = [token.lower() for content in group['contents'] for token in content.split(' ')]
+            words = [
+                token.lower() for content in group['contents'] if
+                         (not filter_commands or (filter_commands and not content.startswith('!'))) and
+                          (not filter_replies or (filter_replies and not content.startswith('@')))
+                for token in content.split(' ')
+            ]
             if not words or len(words) <= 0:
                 continue
 
@@ -66,10 +73,13 @@ class DataSetService(object):
                 messages=group['messages']
             )
             await bag.commit()
+            count += 1
+        log.info('Finished generating Dataset with {} Bags: interval={}, recording_id={}'.format(count, interval, recording.id))
 
-        #while await groups.fetch_next:
-
-        #bag_list = await bags.to_list(None)
-        #print(len(bag_list))
-        #print(bag_list)
-
+    @staticmethod
+    async def get_random_samples(recording_id, interval):
+        pool_size = config.getint('dataset', 'random_sample_pool')
+        sample_size = config.getint('dataset', 'random_sample_size')
+        raw_bags = await Bag.find_sample(recording_id, interval, limit=pool_size, samples=sample_size).to_list(None)
+        bags = [Bag.build_from_mongo(bags) for bags in raw_bags]
+        return bags

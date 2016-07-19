@@ -2,9 +2,11 @@ from datetime import datetime
 from umongo import ValidationError
 from emai.datasource import ChatClient, StreamClient
 from emai.persistence import Message, create_sync_file
-from emai.utils import log
+from emai.utils import log, config
 from functools import partial
 from threading import Event
+from subprocess import Popen, PIPE
+from bson import ObjectId
 
 APP_SERVICE_KEY = 'emai_recording_service'
 
@@ -40,30 +42,43 @@ class Recorder(object):
 
     async def record_channel(self, channel):
         self._chat_client.join_channel('#{}'.format(channel))
-        file_id = None #await self.record_stream(channel)
+        file_id = await self.record_stream(channel)
         return file_id
 
     async def record_stream(self, channel):
         stream = self._stream_client.get_stream(channel, StreamClient.Quality.medium)
-        output = create_sync_file()
-        stop_event = Event()
-        stream_future = self.loop.run_in_executor(None, partial(StreamClient.save_stream, stream=stream, output=output, stop_event=stop_event))
+        file_id = ObjectId()
+        process = self.start_convert_process(stream, file_id)
 
         self.running_file_streams.append({
-            'future': stream_future,
-            'stop_event': stop_event,
-            'file_id': output._id,
+            'process': process,
+            'file_id': file_id,
             'channel': channel
         })
 
-        return output._id
+        return file_id
+
+    def start_convert_process(self, stream, file_name):
+        try:
+            ffmpeg_path = config.get('recording', 'ffmpeg_binary')
+            video_dir = config.get('recording', 'video_dir')
+            file_path = '{video_dir}/{name}.mp4'.format(video_dir=video_dir, name=file_name)
+            options = '-vcodec copy -acodec copy -bsf:a aac_adtstoasc'
+            command = '{ffmpeg_path} -i "{url}" {options} {name}'.format(
+                ffmpeg_path=ffmpeg_path,
+                video_dir=video_dir,
+                options=options,
+                url=stream.url,
+                name=file_path)
+            process = Popen(command, stdin=PIPE, shell=True)
+            return process
+        except Exception as e:
+            print(e)
 
     def stop_stream_record(self, channel):
         running_records = [record for record in self.running_file_streams if record['channel'] == channel]
         for record in running_records:
-            record['stop_event'].set()
-        # cleanup finished streams
-        self.running_file_streams = [record for record in self.running_file_streams if record['future'].done()]
+            record['process'].communicate(input=bytes("q\n", encoding="UTF-8"))
 
     def stop_channel(self, channel):
         self._chat_client.leave_channel('#{}'.format(channel))

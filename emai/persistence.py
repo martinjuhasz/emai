@@ -70,6 +70,9 @@ class Emoticon(EmbeddedDocument):
 
 @instance.register
 class Message(Document):
+    class Meta:
+        collection_name = 'messages'
+
     channel_id = fields.StrField(required=True)
     user_id = fields.StrField(required=True)
     username = fields.StrField()
@@ -81,6 +84,9 @@ class Message(Document):
 
 @instance.register
 class Recording(Document):
+    class Meta:
+        collection_name = 'recordings'
+
     channel_name = fields.StrField(required=True)
     channel_id = fields.IntField(required=True)
     display_name = fields.StrField(required=True)
@@ -93,6 +99,8 @@ class Recording(Document):
 
 @instance.register
 class Bag(Document):
+    class Meta:
+        collection_name = 'bags'
     interval = fields.IntField(required=True)
     recording_id = fields.ObjectIdField(required=True)
     words = fields.ListField(fields.StrField, required=True)

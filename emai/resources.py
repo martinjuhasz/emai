@@ -14,12 +14,9 @@ def setup(app):
     app.router.add_route('GET', '/recordings', RecorderResource.get_recordings)
     app.router.add_route('POST', '/recordings', RecorderResource.create_recording)
     app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording)
-    app.router.add_route('GET', '/recordings/{recording_id}/video', RecorderResource.get_video)
     app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set)
     app.router.add_route('POST', '/recordings/{recording_id}/data-sets/{interval}/sample',
                          RecorderResource.sample_data_set)
-
-    app.router.add_route('GET', '/videos/{video_id}', VideoResource.get_video)
 
 
 class Resource(object):
@@ -100,36 +97,6 @@ class RecorderResource(Resource):
         return Response()
 
     @staticmethod
-    async def get_video(request):
-        # check url parameters
-        recording_id = to_objectid(request.match_info['recording_id'])
-        if not recording_id:
-            return Response(status=400)
-
-        # check if recording exists
-        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
-        if not recording:
-            return Response(status=404)
-
-        # check if video exists
-        video_id = recording.video_id
-        if not video_id:
-            return Response(status=404)
-
-        # generate template and return
-        template = """#EXTM3U
-#EXT-X-MEDIA:TYPE=VIDEO,GROUP-ID="medium",NAME="Medium",AUTOSELECT=YES,DEFAULT=YES
-#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=992000,RESOLUTION=852x480,CODECS="avc1.66.31,mp4a.40.2",VIDEO="medium"
-http://localhost:8080/videos/{video_id}
-            """
-
-        response = Response(body=bytes(template.format(video_id=video_id), encoding='UTF-8'))
-        response.headers['Content-Type'] = 'application/vnd.apple.mpegurl'
-        response.headers['Cache-Control'] = 'no-cache, no-store'
-
-        return response
-
-    @staticmethod
     async def create_data_set(request):
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
@@ -171,37 +138,3 @@ http://localhost:8080/videos/{video_id}
 
         bags = await DataSetService.get_random_samples(recording_id, interval)
         return Response(bags)
-
-
-
-
-class VideoResource(Resource):
-    @staticmethod
-    async def get_video(request):
-        # check url parameters
-        video_id = to_objectid(request.match_info['video_id'])
-        if not video_id:
-            return Response(status=400)
-
-        # start stream
-        video_file_descriptor = get_async_file_descriptor()
-        video_stream = await video_file_descriptor.get(video_id)
-
-        stream_response = await RecorderResource.create_video_stream_response(request)
-        stream_response.headers['Content-Length'] = str(video_stream.length)
-        await stream_response.prepare(request)
-
-        while True:
-            try:
-                # chunk = await video_stream.read(size=4096)
-                chunk = await video_stream.readchunk()
-                if not chunk:
-                    break
-                stream_response.write(chunk)
-                await stream_response.drain()
-            except Exception as e:
-                print(e)
-                break
-
-        await stream_response.write_eof()
-        return stream_response

@@ -1,7 +1,8 @@
-from emai.persistence import Message, Bag
+from emai.persistence import Message, Bag, SampleSchema
 from emai.exceptions import ResourceUnavailableException, ResourceExistsException
 from emai.utils import config, log
 import asyncio
+import re
 
 APP_SERVICE_KEY = 'emai_data_set_service'
 
@@ -33,7 +34,8 @@ class DataSetService(object):
         pipeline = [
             {'$match': {
                 'channel_id': str(recording.channel_id),
-                'created': {'$gte': recording.started, '$lt': recording.stopped}
+                'created': {'$gte': recording.started, '$lt': recording.stopped},
+                'content': {'$not': re.compile('^[!|@].*')}
             }},
             {'$group': {
                 '_id': {
@@ -51,17 +53,10 @@ class DataSetService(object):
             }}
         ]
 
-        filter_commands = config.getboolean('dataset', 'filter_commands')
-        filter_replies = config.getboolean('dataset', 'filter_replies')
         groups = Message.collection.aggregate(pipeline)
         count = 0
         async for group in groups:
-            words = [
-                token.lower() for content in group['contents'] if
-                         (not filter_commands or (filter_commands and not content.startswith('!'))) and
-                          (not filter_replies or (filter_replies and not content.startswith('@')))
-                for token in content.split(' ')
-            ]
+            words = [token.lower() for content in group['contents'] for token in content.split(' ')]
             if not words or len(words) <= 0:
                 continue
 
@@ -80,6 +75,10 @@ class DataSetService(object):
     async def get_random_samples(recording_id, interval):
         pool_size = config.getint('dataset', 'random_sample_pool')
         sample_size = config.getint('dataset', 'random_sample_size')
-        raw_bags = await Bag.find_sample(recording_id, interval, limit=pool_size, samples=sample_size).to_list(None)
-        bags = [Bag.build_from_mongo(bags) for bags in raw_bags]
-        return bags
+        samples_future = Bag.find_sample(recording_id, interval, limit=pool_size, samples=sample_size).to_list(None)
+        samples = []
+        schema = SampleSchema()
+        for data in await samples_future:
+            samples.append(schema.dump(data).data)
+
+        return samples

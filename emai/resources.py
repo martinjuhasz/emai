@@ -8,15 +8,27 @@ from emai.utils import log, config
 from aiohttp.web import StreamResponse
 from emai.services.datasets import DataSetService
 from emai.exceptions import ResourceExistsException, ResourceUnavailableException
-
+import aiohttp_cors
 
 def setup(app):
-    app.router.add_route('GET', '/recordings', RecorderResource.get_recordings)
-    app.router.add_route('POST', '/recordings', RecorderResource.create_recording)
-    app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording)
-    app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set)
-    app.router.add_route('POST', '/recordings/{recording_id}/data-sets/{interval}/sample',
-                         RecorderResource.sample_data_set)
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            '*': aiohttp_cors.ResourceOptions(
+                allow_credentials=True, expose_headers='*', allow_headers='*'
+            )
+        }
+    )
+
+    cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get_recordings))
+    cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create_recording))
+    cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording))
+    cors.add(app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set))
+    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/data-sets/{interval}/sample',
+                         RecorderResource.sample_data_set))
+
+    cors.add(app.router.add_route('PUT', '/samples/{sample_id}',
+                                  SampleResource.classify_sample))
 
 
 class Resource(object):
@@ -138,3 +150,33 @@ class RecorderResource(Resource):
 
         bags = await DataSetService.get_random_samples(recording_id, interval)
         return Response(bags)
+
+
+class SampleResource(Resource):
+
+    @staticmethod
+    async def classify_sample(request):
+        # check url parameters
+        bag_id = to_objectid(request.match_info['sample_id'])
+        if not bag_id:
+            return Response(status=400)
+
+        # check if malformed request
+        body_data = await load_json(request)
+        if not body_data or not 'label' in body_data:
+            return Response(status=400)
+        label = body_data['label']
+
+        # check if bag exists and
+        bag = await Bag.find_one({'_id': bag_id})
+        if not bag:
+            return Response(status=404)
+
+        bag.label = label
+        await bag.commit()
+
+        return Response()
+
+
+
+

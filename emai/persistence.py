@@ -1,7 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFS
 from bson import json_util
 import gridfs
-from umongo import Instance, Document, EmbeddedDocument, fields
+from umongo import Instance, Document, EmbeddedDocument, fields, Schema
+import marshmallow
 from bson import ObjectId
 from bson.errors import InvalidId
 import json
@@ -107,6 +108,7 @@ class Bag(Document):
     started = fields.DateTimeField(required=True)
     messages = fields.ListField(fields.ObjectIdField, required=True)
     message_count = fields.StrField()
+    label = fields.IntField()
 
     @staticmethod
     def find_sample(recording_id, interval, limit=None, samples=None):
@@ -115,22 +117,44 @@ class Bag(Document):
                 'recording_id': recording_id,
                 'interval': interval
             }},
+            {'$match': {
+                '$or': [{'label': {'$exists': False}}, {'label': {'$gte': 0}}]
+            }},
             {'$project': {
-                'interval': 1,
                 'recording_id': 1,
-                'words': 1,
                 'started': 1,
                 'messages': 1,
+                'words':1,
                 'message_count': {'$size': {'$ifNull': ['$messages', []]}}
             }},
+            {'$unwind': '$messages'},
+            {'$lookup': {
+                'from': 'messages',
+                'localField': 'messages',
+                'foreignField': '_id',
+                'as': 'full_messages'
+            }},
+            {'$unwind': '$full_messages'},
+            {'$sort': {'full_messages.created': 1}},
+            {'$group': {
+                '_id': '$_id',
+                'started': {'$first': '$started'},
+                'video_end': {'$first': '$started'},
+                'messages': {'$first': '$messages'},
+                'message_count': {'$first': '$message_count'},
+                'recording_id': {'$first': '$recording_id'},
+                'words': {'$first': '$words'},
+                'full_messages': {"$push": "$full_messages"}
+            }},
+
             {'$sort': {'message_count': -1}},
             {'$project': {
-                'interval': 1,
+                'id': '$_id',
                 'recording_id': 1,
-                'words': 1,
-                'started': 1,
-                'messages': 1
-            }}
+                'time': '$started',
+                'messages': '$full_messages',
+                'words': {'$size': '$words'}
+            }},
         ]
         if limit:
             pipeline.append({'$limit': limit})
@@ -139,3 +163,31 @@ class Bag(Document):
 
         future = Bag.collection.aggregate(pipeline)
         return future
+
+
+class EmoticonSchema(Schema):
+    identifier = fields.StrField(required=True)
+    occurrences = fields.ListField(fields.StrField())
+
+
+class MessageSchema(Schema):
+
+    channel_id = fields.StrField(required=True)
+    user_id = fields.StrField(required=True)
+    username = fields.StrField()
+    identifier = fields.StrField()
+    content = fields.StrField(required=True)
+    created = fields.DateTimeField(required=True)
+    emoticons = fields.ListField(marshmallow.fields.Nested(EmoticonSchema))
+
+class SampleSchema(Schema):
+    id = fields.ObjectIdField()
+    recording_id = fields.ObjectIdField()
+    words = fields.IntField()
+    time = fields.DateTimeField()
+    messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
+    video_start = fields.IntField()
+
+
+
+

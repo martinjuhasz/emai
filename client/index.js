@@ -8,6 +8,11 @@ import thunk from 'redux-thunk'
 import reducer from './reducers'
 import { getSamples, getRecordings } from './actions'
 import App from './containers/App'
+import injectTapEventPlugin from 'react-tap-event-plugin';
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+
+// http://stackoverflow.com/a/34015469/988941
+injectTapEventPlugin();
 
 const middleware = process.env.NODE_ENV === 'production' ?
   [ thunk ] :

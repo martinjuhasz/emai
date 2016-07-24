@@ -1,11 +1,13 @@
-var HtmlWebpackPlugin = require('html-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const TransferWebpackPlugin = require('transfer-webpack-plugin');
+const path = require('path');
 
 module.exports = {
   devtool: '#inline-source-map',
   entry: './client/index.js',
   output: {
     path: 'static',
-    filename: 'js/index.js'
+    filename: './assets/app.js'
   },
   module: {
     loaders: [
@@ -19,8 +21,9 @@ module.exports = {
       }
     ]
   },
-  plugins: [new HtmlWebpackPlugin({
-    filename: 'index.html',
-    template: 'client/index.html'
-  })]
+  plugins: [
+    new TransferWebpackPlugin([
+      {from: '../client/static'},
+    ], path.resolve(__dirname, 'static')),
+  ]
 };

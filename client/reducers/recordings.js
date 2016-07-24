@@ -17,4 +17,8 @@ function recordings(state = {all:[]}, action) {
   }
 }
 
+export function byId(state, record_id) {
+  return state.recordings.all.find(record => record.id === record_id)
+}
+
 export default recordings

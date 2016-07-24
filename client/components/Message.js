@@ -5,7 +5,7 @@ export default class Message extends Component {
     const { message } = this.props
     return (
     	<div>
-			<strong>{message.username || message.user_id}:</strong> {message.content} <br />
+			<strong>User:</strong> {message.content} 
 			{message.emoticons.map(emoticon => {
 				const url = `http://static-cdn.jtvnw.net/emoticons/v1/${emoticon.identifier}/1.0`
 				return <img src={url} key={emoticon.identifier} />

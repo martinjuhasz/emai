@@ -2,16 +2,24 @@ import { combineReducers } from 'redux'
 import { CLASSIFY_SAMPLE, RECEIVE_SAMPLES } from '../constants/ActionTypes'
 
 
-function samples(state = [], action) {
+function byRecording(state = {}, action) {
   switch (action.type) {
     case RECEIVE_SAMPLES:
-      return action.samples
-    case CLASSIFY_SAMPLE:
-    	
-    	return state
+      return Object.assign({},
+        state,
+        {
+        	[action.recording_id]: action.samples
+        }, {})
     default:
       return state
   }
 }
 
-export default samples
+export function getSample(state, record_id) {
+  return state.samples.byRecording[record_id]
+}
+
+
+export default combineReducers({
+  byRecording
+})

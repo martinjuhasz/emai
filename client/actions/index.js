@@ -1,17 +1,18 @@
 import emai from '../api/emai'
 import * as types from '../constants/ActionTypes'
 
-function receiveSamples(samples) {
+function receiveSamples(recording_id, samples) {
   return {
     type: types.RECEIVE_SAMPLES,
-    samples: samples
+    samples: samples,
+    recording_id: recording_id
   }
 }
 
-export function getSamples(recording_id) {
+export function getSamples(recording_id, data_set) {
   return dispatch => {
-    emai.getSamples(recording_id, samples => {
-      dispatch(receiveSamples(samples))
+    emai.getSamples(recording_id, data_set, samples => {
+      dispatch(receiveSamples(recording_id, samples))
     })
   }
 }
@@ -37,16 +38,6 @@ export function getRecordings() {
   return dispatch => {
     emai.getRecordings(recordings => {
       dispatch(receiveRecordings(recordings))
-    })
-  }
-}
-
-export function selectRecording(recording_id) {
-  return dispatch => {
-    dispatch(getSamples(recording_id))
-    dispatch({
-      type: types.SELECT_RECORDING,
-      recording_id: recording_id
     })
   }
 }

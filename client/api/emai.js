@@ -2,8 +2,10 @@ import fetch from 'isomorphic-fetch'
 
 export default {
   
-  getSamples(recording_id, callback) {
-    return fetch(`http://localhost:8080/recordings/${recording_id}/data-sets/10/sample`)
+  getSamples(recording_id, data_set, callback) {
+    const url = `http://localhost:8080/recordings/${recording_id}/data-sets/${data_set}/sample`
+    console.log(url)
+    return fetch(url)
       .then(response => response.json())
       .then(json => callback(json))
   },

@@ -4,7 +4,6 @@ export default class MessageList extends Component {
   render() {
     return (
       <div>
-        <h4>Messages</h4>
         <div>{this.props.children}</div>
       </div>
     )

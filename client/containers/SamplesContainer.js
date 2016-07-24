@@ -3,10 +3,14 @@ import { connect } from 'react-redux'
 import { classifySample } from '../actions'
 import Sample from '../components/Sample'
 import SampleList from '../components/SampleList'
+import { getSample } from '../reducers/samples'
+
 
 class SamplesContainer extends Component {
   render() {
     const { samples } = this.props
+    if (!samples || samples.length < 1) { return null }
+
     return (
       <SampleList title="Samples">
         {samples.map(sample =>
@@ -27,13 +31,13 @@ SamplesContainer.propTypes = {
     time: PropTypes.string.isRequired,
     words: PropTypes.number.isRequired,
     recording_id: PropTypes.string.isRequired,
-  })).isRequired,
+  })),
   classifySample: PropTypes.func.isRequired
 }
 
-function mapStateToProps(state) { 
+function mapStateToProps(state, ownProps) { 
   return {
-    samples: state.samples
+    samples: getSample(state, ownProps.recording.id)
   }
 }
 

@@ -7,6 +7,9 @@ import ContentAdd from 'material-ui/svg-icons/content/add';
 import ContentRemove from 'material-ui/svg-icons/content/remove';
 import ContentClear from 'material-ui/svg-icons/content/clear';
 import {red500, grey500, green500} from 'material-ui/styles/colors';
+import { checkMessage } from '../actions'
+import { getMessages } from '../reducers/samples'
+import { connect } from 'react-redux'
 
 var styles = {
   paper: {
@@ -19,17 +22,19 @@ var styles = {
   }
 };
 
-export default class Sample extends Component {
+class Sample extends Component {
   render() {
-    const { sample } = this.props
+    const { messages } = this.props
 
     return (
       <Paper style={styles.paper}>
-        {sample.messages.map(message =>
+        {messages.map(message =>
             <Message
-              key={message.identifier}
+              key={message._id}
+              onClick={() => this.props.onCheckMessageClicked(message._id)}
               message={message} />
           )}
+        
         <FloatingActionButton mini={true} onClick={() => this.props.onClassifySampleClicked(2)} style={styles.button} backgroundColor={red500}>
           <ContentRemove />
         </FloatingActionButton>
@@ -45,8 +50,18 @@ export default class Sample extends Component {
 }
 
 Sample.propTypes = {
-  sample: PropTypes.shape({
-    message: PropTypes.any
-  }).isRequired,
-  onClassifySampleClicked: PropTypes.func.isRequired
+  sample: PropTypes.any.isRequired,
+  onClassifySampleClicked: PropTypes.func.isRequired,
+  onCheckMessageClicked: PropTypes.func.isRequired
 }
+
+
+function mapStateToProps(state, ownProps) { 
+  return {
+    messages: getMessages(state, ownProps.sample.messages)
+  }
+}
+
+export default connect(
+  mapStateToProps
+)(Sample)

@@ -4,7 +4,7 @@ export default class Message extends Component {
   render() {
     const { message } = this.props
     return (
-    	<div>
+    	<div onClick={this.props.onClick}>
 			<strong>User:</strong> {message.content} 
 			{message.emoticons.map(emoticon => {
 				const url = `http://static-cdn.jtvnw.net/emoticons/v1/${emoticon.identifier}/1.0`

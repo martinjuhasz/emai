@@ -166,15 +166,20 @@ class SampleResource(Resource):
         if not body_data or not 'label' in body_data:
             return Response(status=400)
         label = body_data['label']
+        hidden = []
+        if 'hidden' in body_data:
+            hidden = body_data['hidden']
 
         # check if bag exists and
         bag = await Bag.find_one({'_id': bag_id})
         if not bag:
             return Response(status=404)
 
+        bag.messages = [message for message in bag.messages if str(message) not in hidden]
         bag.label = label
         await bag.commit()
 
+        print(bag)
         return Response()
 
 

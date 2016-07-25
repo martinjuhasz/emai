@@ -1,9 +1,9 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import { classifySample } from '../actions'
+import { classifySample, checkMessage } from '../actions'
 import Sample from '../components/Sample'
 import SampleList from '../components/SampleList'
-import { getSample } from '../reducers/samples'
+import { getSamples } from '../reducers/samples'
 
 
 class SamplesContainer extends Component {
@@ -17,7 +17,8 @@ class SamplesContainer extends Component {
           <Sample
             key={sample.id}
             sample={sample}
-            onClassifySampleClicked={(label) => { this.props.classifySample(sample.id, label) }} />
+            onClassifySampleClicked={(label) => { this.props.classifySample(sample, label) }}
+            onCheckMessageClicked={(message_id) => { this.props.checkMessage(sample, message_id) }} />
         )}
       </SampleList>
     )
@@ -37,11 +38,12 @@ SamplesContainer.propTypes = {
 
 function mapStateToProps(state, ownProps) { 
   return {
-    samples: getSample(state, ownProps.recording.id)
+    samples: getSamples(state, ownProps.recording.id)
   }
 }
 
+
 export default connect(
   mapStateToProps,
-  { classifySample }
+  { classifySample, checkMessage }
 )(SamplesContainer)

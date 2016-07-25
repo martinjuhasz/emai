@@ -124,7 +124,8 @@ class Bag(Document):
                 'recording_id': 1,
                 'started': 1,
                 'messages': 1,
-                'words':1,
+                'words': 1,
+                'interval': 1,
                 'message_count': {'$size': {'$ifNull': ['$messages', []]}}
             }},
             {'$unwind': '$messages'},
@@ -140,6 +141,7 @@ class Bag(Document):
                 '_id': '$_id',
                 'started': {'$first': '$started'},
                 'video_end': {'$first': '$started'},
+                'interval': {'$first': '$interval'},
                 'messages': {'$first': '$messages'},
                 'message_count': {'$first': '$message_count'},
                 'recording_id': {'$first': '$recording_id'},
@@ -151,6 +153,7 @@ class Bag(Document):
             {'$project': {
                 'id': '$_id',
                 'recording_id': 1,
+                'data_set': '$interval',
                 'time': '$started',
                 'messages': '$full_messages',
                 'words': {'$size': '$words'}
@@ -171,7 +174,7 @@ class EmoticonSchema(Schema):
 
 
 class MessageSchema(Schema):
-
+    _id = fields.ObjectIdField()
     channel_id = fields.StrField(required=True)
     user_id = fields.StrField(required=True)
     username = fields.StrField()
@@ -187,6 +190,7 @@ class SampleSchema(Schema):
     time = fields.DateTimeField()
     messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
     video_start = fields.IntField()
+    data_set = fields.IntField()
 
 
 

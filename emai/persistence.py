@@ -118,7 +118,7 @@ class Bag(Document):
                 'interval': interval
             }},
             {'$match': {
-                '$or': [{'label': {'$exists': False}}, {'label': {'$gte': 0}}]
+                '$or': [{'label': {'$exists': False}}, {'label': {'$lte': 0}}]
             }},
             {'$project': {
                 'recording_id': 1,
@@ -136,7 +136,6 @@ class Bag(Document):
                 'as': 'full_messages'
             }},
             {'$unwind': '$full_messages'},
-            {'$sort': {'full_messages.created': 1}},
             {'$group': {
                 '_id': '$_id',
                 'started': {'$first': '$started'},
@@ -167,6 +166,51 @@ class Bag(Document):
         future = Bag.collection.aggregate(pipeline)
         return future
 
+    @staticmethod
+    def get_training_bags(recording_id, interval, limit=None):
+        pipeline = [
+            {'$match': {
+                'recording_id': recording_id,
+                'interval': interval,
+                'label': {'$gte': 2}
+            }},
+            {'$unwind': '$messages'},
+            {'$lookup': {
+                'from': 'messages',
+                'localField': 'messages',
+                'foreignField': '_id',
+                'as': 'full_messages'
+            }},
+            {'$unwind': '$full_messages'},
+            {'$group': {
+                '_id': '$_id',
+                'started': {'$first': '$started'},
+                'video_end': {'$first': '$started'},
+                'interval': {'$first': '$interval'},
+                'messages': {'$first': '$messages'},
+                'label': {'$first': '$label'},
+                'message_count': {'$first': '$message_count'},
+                'recording_id': {'$first': '$recording_id'},
+                'words': {'$first': '$words'},
+                'full_messages': {"$push": "$full_messages"}
+            }},
+
+            {'$sort': {'message_count': -1}},
+            {'$project': {
+                'id': '$_id',
+                'recording_id': 1,
+                'data_set': '$interval',
+                'label': 1,
+                'time': '$started',
+                'messages': '$full_messages',
+                'words': {'$size': '$words'}
+            }},
+        ]
+        if limit:
+            pipeline.append({'$limit': limit})
+
+        future = Bag.collection.aggregate(pipeline)
+        return future
 
 class EmoticonSchema(Schema):
     identifier = fields.StrField(required=True)

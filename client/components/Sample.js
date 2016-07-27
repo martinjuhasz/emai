@@ -31,17 +31,17 @@ class Sample extends Component {
         {messages.map(message =>
             <Message
               key={message._id}
-              onClick={() => this.props.onCheckMessageClicked(message._id)}
+              onTouchTap={() => this.props.onCheckMessageClicked(message._id)}
               message={message} />
           )}
         
-        <FloatingActionButton mini={true} onClick={() => this.props.onClassifySampleClicked(2)} style={styles.button} backgroundColor={red500}>
+        <FloatingActionButton mini={true} onTouchTap={() => this.props.onClassifySampleClicked(2)} style={styles.button} backgroundColor={red500}>
           <ContentRemove />
         </FloatingActionButton>
-        <FloatingActionButton mini={true} onClick={() => this.props.onClassifySampleClicked(1)} style={styles.button} backgroundColor={grey500}>
+        <FloatingActionButton mini={true} onTouchTap={() => this.props.onClassifySampleClicked(1)} style={styles.button} backgroundColor={grey500}>
           <ContentClear />
         </FloatingActionButton>
-        <FloatingActionButton mini={true} onClick={() => this.props.onClassifySampleClicked(3)} style={styles.button} backgroundColor={green500}>
+        <FloatingActionButton mini={true} onTouchTap={() => this.props.onClassifySampleClicked(3)} style={styles.button} backgroundColor={green500}>
           <ContentAdd />
         </FloatingActionButton>
       </Paper>

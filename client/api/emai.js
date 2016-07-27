@@ -7,17 +7,19 @@ sample.define({
   messages: arrayOf(message)
 })
 
+const api_url = 'http://10.0.1.88:8082'
+
 export default {
   
   getSamples(recording_id, data_set, callback) {
-    const url = `http://localhost:8080/recordings/${recording_id}/data-sets/${data_set}/sample`
+    const url = `${api_url}/recordings/${recording_id}/data-sets/${data_set}/sample`
     return fetch(url)
       .then(response => response.json())
       .then(json => callback(normalize(json, arrayOf(sample))))
   },
 
   classifySample(sample_id, label, hiddenMessages) {
-  	return fetch(`http://localhost:8080/samples/${sample_id}`, {
+  	return fetch(`${api_url}/samples/${sample_id}`, {
   	  method: 'PUT',
   	  headers: {
   	    'Accept': 'application/json',
@@ -31,7 +33,7 @@ export default {
   },
 
   getRecordings(callback) {
-  	return fetch('http://localhost:8080/recordings')
+  	return fetch(`${api_url}/recordings`)
       .then(response => response.json())
       .then(json => callback(json))
   }

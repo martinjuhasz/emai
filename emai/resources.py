@@ -179,7 +179,8 @@ class SampleResource(Resource):
         bag.label = label
         await bag.commit()
 
-        print(bag)
+        log.info('Updated: {}'.format(bag.id))
+
         return Response()
 
 

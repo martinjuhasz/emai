@@ -4,7 +4,6 @@ import { classifySample, checkMessage } from '../actions'
 import Sample from '../components/Sample'
 import SampleList from '../components/SampleList'
 import { getSamples } from '../reducers/samples'
-import Video from '../components/Video'
 
 
 class SamplesContainer extends Component {
@@ -13,18 +12,15 @@ class SamplesContainer extends Component {
     if (!samples || samples.length < 1) { return null }
 
     return (
-      <div>
-        <SampleList title="Samples">
-          {samples.map(sample =>
-            <Sample
-              key={sample.id}
-              sample={sample}
-              onClassifySampleClicked={(label) => { this.props.classifySample(sample, label) }}
-              onCheckMessageClicked={(message_id) => { this.props.checkMessage(sample, message_id) }} />
-          )}
-        </SampleList>
-        <Video video_id={this.props.recording.id} />
-      </div>
+      <SampleList title="Samples">
+        {samples.map(sample =>
+          <Sample
+            key={sample.id}
+            sample={sample}
+            onClassifySampleClicked={(label) => { this.props.classifySample(sample, label) }}
+            onCheckMessageClicked={(message_id) => { this.props.checkMessage(sample, message_id) }} />
+        )}
+      </SampleList>
     )
   }
 }

@@ -8,6 +8,7 @@ sample.define({
 })
 
 const api_url = 'http://10.0.1.88:8082'
+/* const api_url = 'http://0.0.0.0:8082' */
 
 export default {
   
@@ -36,7 +37,16 @@ export default {
   	return fetch(`${api_url}/recordings`)
       .then(response => response.json())
       .then(json => callback(json))
-  }
+  },
+
+  getClassifiers(recording_id, callback) {
+    const url = `${api_url}/training/${recording_id}`
+    return fetch(url)
+      .then(response => response.json())
+      .then(json => callback(json))
+  },
+
+  
 }
 
 

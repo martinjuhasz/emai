@@ -167,44 +167,108 @@ class Bag(Document):
         return future
 
     @staticmethod
-    def get_training_bags(recording_id, interval, limit=None):
+    def get_training_messages(recording_id, limit=None, label_eq={'$gte': 2}, samples=None):
         pipeline = [
             {'$match': {
                 'recording_id': recording_id,
-                'interval': interval,
-                'label': {'$gte': 2}
+                'label': label_eq
             }},
             {'$unwind': '$messages'},
             {'$lookup': {
                 'from': 'messages',
                 'localField': 'messages',
                 'foreignField': '_id',
-                'as': 'full_messages'
+                'as': 'message'
             }},
-            {'$unwind': '$full_messages'},
-            {'$group': {
-                '_id': '$_id',
-                'started': {'$first': '$started'},
-                'video_end': {'$first': '$started'},
-                'interval': {'$first': '$interval'},
-                'messages': {'$first': '$messages'},
-                'label': {'$first': '$label'},
-                'message_count': {'$first': '$message_count'},
-                'recording_id': {'$first': '$recording_id'},
-                'words': {'$first': '$words'},
-                'full_messages': {"$push": "$full_messages"}
-            }},
-
-            {'$sort': {'message_count': -1}},
+            {'$unwind': '$message'},
             {'$project': {
+                '_id': 0,
+                'recording_id': 1,
+                'label': 1,
+                'message': 1
+            }},
+            {'$unwind': '$message'},
+            {'$unwind': '$message'},
+            {'$group': {
+                '_id': '$message._id',
+                'recording_id': {'$first': '$recording_id'},
+                'label': {'$first': '$label'},
+                'channel_id': {'$first': '$message.channel_id'},
+                'content': {'$first': '$message.content'},
+                'created': {'$first': '$message.created'},
+                'emoticons': {'$first': '$message.emoticons'},
+                'user_id': {'$first': '$message.user_id'},
+                'username': {'$first': '$message.username'}
+            }},
+            {'$project': {
+                '_id': 0,
                 'id': '$_id',
                 'recording_id': 1,
-                'data_set': '$interval',
                 'label': 1,
-                'time': '$started',
-                'messages': '$full_messages',
-                'words': {'$size': '$words'}
+                'channel_id': 1,
+                'content': 1,
+                'created': 1,
+                'emoticons': 1,
+                'user_id': 1,
+                'username': 1
             }},
+
+        ]
+        if limit:
+            pipeline.append({'$limit': limit})
+        if samples:
+            pipeline.append({'$sample': {'size': samples}})
+
+        future = Bag.collection.aggregate(pipeline)
+        return future
+
+    @staticmethod
+    def get_training_bags(recording_id, limit=None, label_eq={'$gte': 2}):
+        pipeline = [
+            {'$match': {
+                'recording_id': recording_id,
+                'label': label_eq
+            }},
+            {'$unwind': '$messages'},
+            {'$lookup': {
+                'from': 'messages',
+                'localField': 'messages',
+                'foreignField': '_id',
+                'as': 'message'
+            }},
+            {'$unwind': '$message'},
+            {'$project': {
+                '_id': 0,
+                'recording_id': 1,
+                'label': 1,
+                'message': 1
+            }},
+            {'$unwind': '$message'},
+            {'$unwind': '$message'},
+            {'$group': {
+                '_id': '$message._id',
+                'recording_id': {'$first': '$recording_id'},
+                'label': {'$first': '$label'},
+                'channel_id': {'$first': '$message.channel_id'},
+                'content': {'$first': '$message.content'},
+                'created': {'$first': '$message.created'},
+                'emoticons': {'$first': '$message.emoticons'},
+                'user_id': {'$first': '$message.user_id'},
+                'username': {'$first': '$message.username'}
+            }},
+            {'$project': {
+                '_id': 0,
+                'id': '$_id',
+                'recording_id': 1,
+                'label': 1,
+                'channel_id': 1,
+                'content': 1,
+                'created': 1,
+                'emoticons': 1,
+                'user_id': 1,
+                'username': 1
+            }},
+
         ]
         if limit:
             pipeline.append({'$limit': limit})

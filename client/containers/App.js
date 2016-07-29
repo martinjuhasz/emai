@@ -2,6 +2,8 @@ import React, { Component } from 'react'
 import SamplesContainer from './SamplesContainer'
 import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
+import TrainingsContainer from './TrainingsContainer'
+import TrainingContainer from './TrainingContainer'
 import { Router, Route, Link, IndexRoute, hashHistory, browserHistory } from 'react-router'
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 import Paper from 'material-ui/Paper';
@@ -17,6 +19,10 @@ export default class App extends Component {
             <IndexRoute component={Home} />
             <Route path='recordings' component={RecordingsContainer}>
               <Route path=':recording_id' component={RecordingContainer} />
+            </Route>
+
+            <Route path='trainings' component={TrainingsContainer}>
+              <Route path=':recording_id' component={TrainingContainer} />
             </Route>
             
             <Route path='*' component={NotFound} />
@@ -55,7 +61,7 @@ const styles = {
 const Nav = () => (
   <Menu autoWidth={false} style={styles.menu}>
     <MenuItem containerElement={<Link to="/recordings" activeClassName="active" />} primaryText="Recordings" />
-    <MenuItem primaryText="Learn" />
+    <MenuItem containerElement={<Link to="/trainings" activeClassName="active" />} primaryText="Learn" />
     <MenuItem primaryText="Live" />
   </Menu>
 );

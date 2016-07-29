@@ -61,3 +61,19 @@ export function getRecordings() {
     })
   }
 }
+
+export function getClassifiers(recording_id) {
+  return dispatch => {
+    emai.getClassifiers(recording_id, classifiers => {
+      dispatch(receiveClassifiers(recording_id, classifiers))
+    })
+  }
+}
+
+function receiveClassifiers(recording_id, classifiers) {
+  return {
+    type: types.RECEIVE_CLASSIFIERS,
+    classifiers: classifiers,
+    recording_id: recording_id
+  }
+}

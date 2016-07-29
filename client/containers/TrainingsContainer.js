@@ -5,18 +5,18 @@ import RecordingsList from '../components/RecordingsList'
 
 const recording_list = (recordings) => {
   return (
-      <RecordingsList title="Recordings">
+      <RecordingsList title="Trainings">
         {recordings.map(recording =>
           <Recording
             key={recording.id}
             recording={recording}
-            path='recordings' />
+            path='trainings' />
         )}
       </RecordingsList>
     )
 }
 
-class RecordingsContainer extends Component {
+class TrainingsContainer extends Component {
   render() {
     const { recordings } = this.props
     return (
@@ -25,7 +25,7 @@ class RecordingsContainer extends Component {
   }
 }
 
-RecordingsContainer.propTypes = {
+TrainingsContainer.propTypes = {
   recordings: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     display_name: PropTypes.string.isRequired,
@@ -42,4 +42,4 @@ function mapStateToProps(state) {
 
 export default connect(
   mapStateToProps
-)(RecordingsContainer)
+)(TrainingsContainer)

@@ -82,3 +82,14 @@ class DataSetService(object):
             samples.append(schema.dump(data).data)
 
         return samples
+
+    @staticmethod
+    async def get_samples(recording, interval):
+        pool_size = config.getint('dataset', 'random_sample_pool')
+        sample_size = config.getint('dataset', 'random_sample_size')
+        samples_future = Message.find_sample(recording, interval, limit=pool_size, samples=sample_size).to_list(None)
+        samples = []
+        schema = SampleSchema()
+        for data in await samples_future:
+            samples.append(schema.dump(data).data)
+        return samples

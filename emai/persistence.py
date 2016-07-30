@@ -8,6 +8,7 @@ from bson.errors import InvalidId
 import json
 from functools import partial
 from pymongo import MongoClient
+import re
 
 db = AsyncIOMotorClient()['emai']
 instance = Instance(db)
@@ -81,6 +82,55 @@ class Message(Document):
     content = fields.StrField(required=True)
     created = fields.DateTimeField(required=True)
     emoticons = fields.ListField(fields.EmbeddedField(Emoticon))
+    label = fields.IntField()
+
+    @staticmethod
+    def find_sample(recording, interval, limit=None, samples=None):
+        interval_milli = interval * 1000
+        pipeline = [
+            {'$match': {
+                'channel_id': str(recording.channel_id),
+                'created': {'$gte': recording.started, '$lt': recording.stopped},
+                'content': {'$not': re.compile('^[!|@].*')},
+                'label': {'$exists': False}
+            }},
+            {'$group': {
+                '_id': {
+                    '$subtract': [
+                        '$created',
+                        {'$mod': [{'$subtract': ['$created', recording.started]}, interval_milli]}
+                    ]
+                },
+                'messages': {
+                    '$push': '$_id'
+                }
+            }},
+            {'$unwind': '$messages'},
+            {'$lookup': {
+                'from': 'messages',
+                'localField': 'messages',
+                'foreignField': '_id',
+                'as': 'messages'
+            }},
+            {'$unwind': '$messages'},
+            {'$group': {
+                '_id': '$_id',
+                'messages': {"$push": "$messages"}
+            }},
+            {'$project': {
+                '_id': 0,
+                'id': '$_id',
+                'messages': 1
+            }},
+        ]
+        if limit:
+            pipeline.append({'$limit': limit})
+        if samples:
+            pipeline.append({'$sample': {'size': samples}})
+
+        future = Message.collection.aggregate(pipeline)
+        return future
+
 
 
 @instance.register
@@ -292,13 +342,8 @@ class MessageSchema(Schema):
     emoticons = fields.ListField(marshmallow.fields.Nested(EmoticonSchema))
 
 class SampleSchema(Schema):
-    id = fields.ObjectIdField()
-    recording_id = fields.ObjectIdField()
-    words = fields.IntField()
-    time = fields.DateTimeField()
+    id = fields.DateTimeField()
     messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
-    video_start = fields.IntField()
-    data_set = fields.IntField()
 
 
 

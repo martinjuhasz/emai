@@ -12,8 +12,8 @@ const api_url = 'http://10.0.1.88:8082'
 
 export default {
   
-  getSamples(recording_id, data_set, callback) {
-    const url = `${api_url}/recordings/${recording_id}/data-sets/${data_set}/sample`
+  getSamples(recording_id, interval, callback) {
+    const url = `${api_url}/training/${recording_id}/samples/${interval}`
     return fetch(url)
       .then(response => response.json())
       .then(json => callback(normalize(json, arrayOf(sample))))

@@ -31,8 +31,8 @@ def setup(app):
     cors.add(app.router.add_route('PUT', '/samples/{sample_id}',
                                   SampleResource.classify_sample))
 
-    cors.add(app.router.add_route('GET', '/training/{recording_id}',
-                                  TrainResource.train_classifiers))
+    cors.add(app.router.add_route('GET', '/training/{recording_id}', TrainResource.train_classifiers))
+    cors.add(app.router.add_route('GET', '/training/{recording_id}/samples/{interval}', TrainResource.samples))
 
 
 class Resource(object):
@@ -209,3 +209,19 @@ class TrainResource(Resource):
             'nb': test['nb'].get_results(),
             'svm': test['svm'].get_results()
         })
+
+    @staticmethod
+    async def samples(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        interval = int(request.match_info['interval'])
+        if not recording_id or not interval:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
+        if not recording:
+            return Response(status=404)
+
+        bags = await DataSetService.get_samples(recording, interval)
+        return Response(bags)

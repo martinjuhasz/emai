@@ -10,9 +10,9 @@ function receiveSamples(recording_id, samples) {
   }
 }
 
-export function getSamples(recording_id, data_set) {
+export function getSamples(recording_id, interval) {
   return dispatch => {
-    emai.getSamples(recording_id, data_set, samples => {
+    emai.getSamples(recording_id, interval, samples => {
       dispatch(receiveSamples(recording_id, samples))
     })
   }

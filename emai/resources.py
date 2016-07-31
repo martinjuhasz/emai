@@ -24,15 +24,12 @@ def setup(app):
     cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get_recordings))
     cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create_recording))
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording))
-    cors.add(app.router.add_route('POST', '/recordings/{recording_id}/data-sets', RecorderResource.create_data_set))
-    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/data-sets/{interval}/sample',
-                         RecorderResource.sample_data_set))
+    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
 
-    cors.add(app.router.add_route('PUT', '/samples/{sample_id}',
-                                  SampleResource.classify_sample))
+    cors.add(app.router.add_route('PUT', '/samples/{sample_id}', SampleResource.classify_sample))
 
     cors.add(app.router.add_route('GET', '/training/{recording_id}', TrainResource.train_classifiers))
-    cors.add(app.router.add_route('GET', '/training/{recording_id}/samples/{interval}', TrainResource.samples))
+
 
 
 class Resource(object):
@@ -113,34 +110,7 @@ class RecorderResource(Resource):
         return Response()
 
     @staticmethod
-    async def create_data_set(request):
-        # check url parameters
-        recording_id = to_objectid(request.match_info['recording_id'])
-        if not recording_id:
-            return Response(status=400)
-
-        # check if recording exists
-        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
-        if not recording:
-            return Response(status=404)
-
-        # check if malformed request
-        body_data = await load_json(request)
-        if not body_data or not 'interval' in body_data:
-            return Response(status=400)
-
-        try:
-            interval = int(body_data['interval'])
-            data_set_service = request.app[services.datasets.APP_SERVICE_KEY]
-            await data_set_service.generate_data_set(recording, interval)
-            return Response()
-        except ValueError:
-            return Response(status=400)
-        except ResourceExistsException:
-            return Response(status=409)
-
-    @staticmethod
-    async def sample_data_set(request):
+    async def samples(request):
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
         interval = int(request.match_info['interval'])
@@ -149,10 +119,10 @@ class RecorderResource(Resource):
 
         # check if recording exists
         recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
-        if not recording or interval not in recording.data_sets:
+        if not recording:
             return Response(status=404)
 
-        bags = await DataSetService.get_random_samples(recording_id, interval)
+        bags = await DataSetService.get_samples(recording, interval)
         return Response(bags)
 
 
@@ -209,19 +179,3 @@ class TrainResource(Resource):
             'nb': test['nb'].get_results(),
             'svm': test['svm'].get_results()
         })
-
-    @staticmethod
-    async def samples(request):
-        # check url parameters
-        recording_id = to_objectid(request.match_info['recording_id'])
-        interval = int(request.match_info['interval'])
-        if not recording_id or not interval:
-            return Response(status=400)
-
-        # check if recording exists
-        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
-        if not recording:
-            return Response(status=404)
-
-        bags = await DataSetService.get_samples(recording, interval)
-        return Response(bags)

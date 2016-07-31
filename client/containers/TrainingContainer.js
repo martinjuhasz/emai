@@ -4,8 +4,6 @@ import { byRecording } from '../reducers/classifiers'
 import { Link } from 'react-router'
 import { getClassifiers } from '../actions'
 import Classifier from '../components/Classifier'
-import FlatButton from 'material-ui/FlatButton';
-import RaisedButton from 'material-ui/RaisedButton';
 
 const styles = {
     classifiers: {
@@ -22,7 +20,7 @@ class TrainingContainer extends Component {
     return (
       <div>
         <h2>Classifiers</h2>
-        <RaisedButton label="Train Classifiers" onTouchTap={() => this.props.onReloadClicked()}/>
+        <div onTouchTap={() => this.props.onReloadClicked()}>Train Classifiers</div>
 
         <div style={styles.classifiers}>
           {classifiers ? <Classifier title="Logistic Regression" classifier={classifiers['logreg']} /> : null }

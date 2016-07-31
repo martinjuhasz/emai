@@ -1,12 +1,8 @@
-html {
-  font-family: 'Roboto', sans-serif;
+
+.hspace {
+	margin-bottom: 20px;
 }
 
-body {
-  font-size: 13px;
-  line-height: 20px;
-}
-
-.active {
-	background-color: red;
+.emoticon {
+	margin: 0 3px;
 }

@@ -1,6 +1,6 @@
 import emai from '../api/emai'
 import * as types from '../constants/ActionTypes'
-import { getSamples as getSamplesReducer, filterHiddenMessages } from '../reducers/samples'
+import { getSamples as getSamplesReducer, getUnlabeledMessages, getMessages } from '../reducers/samples'
 
 function receiveSamples(recording_id, samples) {
   return {
@@ -21,13 +21,43 @@ export function getSamples(recording_id, interval) {
 export function classifySample(sample, label) {
   return (dispatch, getState) => {
     const state = getState()
-    const hiddenMessages = filterHiddenMessages(state, sample.messages)
-    emai.classifySample(sample.id, label, hiddenMessages)
-    checkForNewSamples(state, sample, dispatch)
-    dispatch({
-      type: types.CLASSIFY_SAMPLE,
-      sample: sample
-    })
+    const messages = getUnlabeledMessages(state, sample.messages)
+    for(const message of messages) {
+      dispatch({
+        type: types.CLASSIFY_MESSAGE,
+        message: message._id,
+        label: label
+      })
+    }
+  }
+}
+
+export function saveSample(sample) {
+  return (dispatch, getState) => {
+    const state = getState()
+    const messages = getMessages(state, sample.messages)
+    emai.classifyMessages(messages)
+  }
+}
+
+export function declassifySample(sample) {
+  return (dispatch, getState) => {
+    const state = getState()
+    const messages = getMessages(state, sample.messages)
+    for(const message of messages) {
+      dispatch({
+        type: types.DECLASSIFY_MESSAGE,
+        message: message._id,
+      })
+    }
+  }
+}
+
+export function classifyMessage(message, label) {
+  return {
+    type: types.CLASSIFY_MESSAGE,
+    message: message,
+    label: label
   }
 }
 
@@ -40,10 +70,10 @@ export function checkMessage(sample, message_id) {
     }
 }
 
-function checkForNewSamples(state, sample, dispatch) {
-  const samples = getSamplesReducer(state, sample.recording_id)
+function checkForNewSamples(dispatch, state, recording_id ,interval) {
+  const samples = getSamplesReducer(state, recording_id)
   if (!samples || (samples && samples.length <= 1)) {
-    dispatch(getSamples(sample.recording_id, sample.data_set))
+    dispatch(getSamples(recording_id, interval))
   }
 }
 

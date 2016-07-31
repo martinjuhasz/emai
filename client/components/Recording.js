@@ -1,14 +1,11 @@
 import React, { Component, PropTypes } from 'react'
 import { Link } from 'react-router'
-import RaisedButton from 'material-ui/RaisedButton';
-import Divider from 'material-ui/Divider';
-
 export default class Recording extends Component {
   render() {
     const { recording, path } = this.props
     return (
       <div>
-        <RaisedButton label={recording.display_name} primary={true} containerElement={<Link to={`/${path}/${recording.id}`} />} />
+        <Link to={`/${path}/${recording.id}`}>{recording.display_name}</Link>
       </div>
     )
   }

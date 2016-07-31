@@ -1,7 +1,5 @@
 import React, { Component, PropTypes } from 'react'
-import Paper from 'material-ui/Paper';
 import { connect } from 'react-redux'
-import {Table, TableBody, TableHeader, TableHeaderColumn, TableRow, TableRowColumn} from 'material-ui/Table';
 
 
 class SettingsResult extends Component {

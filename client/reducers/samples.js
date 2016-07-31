@@ -1,14 +1,9 @@
 import { combineReducers } from 'redux'
-import { CLASSIFY_SAMPLE, RECEIVE_SAMPLES, CHECK_MESSAGE } from '../constants/ActionTypes'
+import * as types from '../constants/ActionTypes'
 import merge from 'lodash/merge'
 
 function byRecording(state = {}, action) {
-  if(action && action.type === RECEIVE_SAMPLES && action.samples && action.samples.result) {
-    /*
-    return merge({}, state, {
-      [action.recording_id]: action.samples.result
-    })
-    */
+  if(action && action.type === types.RECEIVE_SAMPLES && action.samples && action.samples.result) {
     return {
       [action.recording_id]: action.samples.result
     }
@@ -18,10 +13,9 @@ function byRecording(state = {}, action) {
 
 function samples(state = {}, action) {
   switch(action.type) {
-    case RECEIVE_SAMPLES:
-      //return merge({}, state, action.samples.entities.sample)
+    case types.RECEIVE_SAMPLES:
       return action.samples.entities.sample
-    case CLASSIFY_SAMPLE:
+    case types.CLASSIFY_SAMPLE:
       return merge({}, state, {
         [action.sample.id]: merge({}, state[action.sample.id], {classified: true})
       })
@@ -32,12 +26,19 @@ function samples(state = {}, action) {
 
 function messages(state = {}, action) {
   switch(action.type) {
-    case RECEIVE_SAMPLES:
-      //return merge({}, state, action.samples.entities.message)
+    case types.RECEIVE_SAMPLES:
       return action.samples.entities.message
-    case CHECK_MESSAGE:
+    case types.CHECK_MESSAGE:
       return merge({}, state, {
         [action.message]: merge({}, state[action.message], {hidden: true})
+      })
+    case types.CLASSIFY_MESSAGE:
+      return merge({}, state, {
+        [action.message]: merge({}, state[action.message], {label: action.label})
+      })
+    case types.DECLASSIFY_MESSAGE:
+      return merge({}, state, {
+        [action.message]: merge({}, state[action.message], {label: null})
       })
     default:
       return state
@@ -51,12 +52,17 @@ export function getSamples(state, record_id) {
   }
 }
 
-export function getMessages(state, message_ids) {
-  return message_ids.map(mid => state.samples.messages[mid]).filter(message => !message.hidden)
+export function getSample(state, recording_id) {
+  const samples = getSamples(state, recording_id)
+  return (samples && samples[0]) ? samples[0] : null
 }
 
-export function filterHiddenMessages(state, message_ids) {
-  return message_ids.map(mid => state.samples.messages[mid]).filter(message => message.hidden).map(m => m._id)
+export function getMessages(state, message_ids) {
+  return message_ids.map(mid => state.samples.messages[mid])
+}
+
+export function getUnlabeledMessages(state, message_ids) {
+  return message_ids.map(mid => state.samples.messages[mid]).filter(message => !('label' in message) || message.label == null)
 }
 
 export default combineReducers({

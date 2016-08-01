@@ -26,7 +26,7 @@ def setup(app):
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
 
-    cors.add(app.router.add_route('PUT', '/samples/{sample_id}', SampleResource.classify_sample))
+    cors.add(app.router.add_route('PUT', '/messages', MessageResource.classify_messages))
 
     cors.add(app.router.add_route('GET', '/training/{recording_id}', TrainResource.train_classifiers))
 
@@ -126,34 +126,17 @@ class RecorderResource(Resource):
         return Response(bags)
 
 
-class SampleResource(Resource):
+class MessageResource(Resource):
 
     @staticmethod
-    async def classify_sample(request):
-        # check url parameters
-        bag_id = to_objectid(request.match_info['sample_id'])
-        if not bag_id:
-            return Response(status=400)
+    async def classify_messages(request):
 
         # check if malformed request
         body_data = await load_json(request)
-        if not body_data or not 'label' in body_data:
+        if not body_data or not 'messages' in body_data:
             return Response(status=400)
-        label = body_data['label']
-        hidden = []
-        if 'hidden' in body_data:
-            hidden = body_data['hidden']
-
-        # check if bag exists and
-        bag = await Bag.find_one({'_id': bag_id})
-        if not bag:
-            return Response(status=404)
-
-        bag.messages = [message for message in bag.messages if str(message) not in hidden]
-        bag.label = label
-        await bag.commit()
-
-        log.info('Updated: {}'.format(bag.id))
+        messages = body_data['messages']
+        await DataSetService.classify_messages(messages)
 
         return Response()
 

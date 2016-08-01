@@ -3,6 +3,8 @@ from emai.exceptions import ResourceUnavailableException, ResourceExistsExceptio
 from emai.utils import config, log
 import asyncio
 import re
+from bson import ObjectId
+from bson.errors import InvalidId
 
 APP_SERVICE_KEY = 'emai_data_set_service'
 
@@ -93,3 +95,17 @@ class DataSetService(object):
         for data in await samples_future:
             samples.append(schema.dump(data).data)
         return samples
+
+    @staticmethod
+    async def classify_messages(messages):
+        for message_data in messages:
+            try:
+                message_id = ObjectId(message_data['id'])
+                message = await Message.find_one(message_id)
+                if not message:
+                    continue
+                message.label = message_data['label']
+                await message.commit()
+                log.info('Message classified: {} label:{}'.format(message.id, message.label))
+            except TypeError or InvalidId:
+                log.warn('Could not save classification: {}'.format(message_data))

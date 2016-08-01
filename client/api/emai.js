@@ -34,7 +34,21 @@ export default {
   },
 
   classifyMessages(messages) {
-    console.log('pew')
+    const json_messages = messages.filter(message => message.label > 0).map(message => {return {'id':message._id, 'label':message.label}})
+    if(!json_messages || json_messages.length <= 0) {
+      return
+    }
+
+    return fetch(`${api_url}/messages`, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messages: json_messages
+      })
+    })
   },
 
   getRecordings(callback) {

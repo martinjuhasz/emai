@@ -47,7 +47,6 @@ class SamplesContainer extends Component {
 
   render() {
     const { sample, params } = this.props
-    if (!sample) { return null }
 
     return (
       <Row>
@@ -62,13 +61,15 @@ class SamplesContainer extends Component {
                   onReloadClicked={() => this.props.getSamples(params.recording_id, params.interval)} 
                   onClassifyClicked={this.handleClassifyClick}
                   onUndoClicked={() => this.props.declassifySample(sample)}
-                  onSaveClicked={() => this.props.saveSample(sample)} />
+                  onSaveClicked={() => this.props.saveSample(sample, params.recording_id, params.interval)} />
               </Col>
               <Col>
+              {sample && 
                 <Sample
                   sample={sample}
                   onMessageClicked={(message_id) => { this.handleMessageClick(message_id) }}
                   selected_message={this.state.selected_message} />
+              }
               </Col>
             </Col>
       </Row>

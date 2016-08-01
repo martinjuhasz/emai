@@ -32,11 +32,20 @@ export function classifySample(sample, label) {
   }
 }
 
-export function saveSample(sample) {
+export function saveSample(sample, recording_id, interval) {
   return (dispatch, getState) => {
+
+    dispatch({
+      type: types.CLASSIFY_SAMPLE,
+      sample: sample,
+      recording_id: recording_id
+    })
+
     const state = getState()
     const messages = getMessages(state, sample.messages)
     emai.classifyMessages(messages)
+
+    checkForNewSamples(dispatch, state, recording_id, interval)
   }
 }
 
@@ -72,7 +81,7 @@ export function checkMessage(sample, message_id) {
 
 function checkForNewSamples(dispatch, state, recording_id ,interval) {
   const samples = getSamplesReducer(state, recording_id)
-  if (!samples || (samples && samples.length <= 1)) {
+  if (!samples || (samples && samples.length <= 0)) {
     dispatch(getSamples(recording_id, interval))
   }
 }

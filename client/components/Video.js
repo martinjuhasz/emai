@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from 'react'
-import { connect } from 'react-redux'
 import { ResponsiveEmbed } from 'react-bootstrap/lib'
 
 export default class Video extends Component {
@@ -26,7 +25,7 @@ export default class Video extends Component {
     this.refs.video.pause()
   }
 
-  onTimeUpdate(videoEvent) {
+  onTimeUpdate() {
     if(this.props.stop_time && this.props.stop_time <= this.refs.video.currentTime) {
       this.stop()
     }

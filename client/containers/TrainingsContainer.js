@@ -1,18 +1,17 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import Recording from '../components/Recording'
-import RecordingsList from '../components/RecordingsList'
 
 const recording_list = (recordings) => {
   return (
-      <RecordingsList title="Trainings">
+      <div>
         {recordings.map(recording =>
           <Recording
             key={recording.id}
             recording={recording}
             path='trainings' />
         )}
-      </RecordingsList>
+      </div>
     )
 }
 
@@ -34,7 +33,7 @@ TrainingsContainer.propTypes = {
   })).isRequired
 }
 
-function mapStateToProps(state) { 
+function mapStateToProps(state) {
   return {
     recordings: state.recordings.all
   }

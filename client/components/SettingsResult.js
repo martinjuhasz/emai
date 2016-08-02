@@ -17,7 +17,8 @@ class SettingsResult extends Component {
 }
 
 SettingsResult.propTypes = {
-  result: PropTypes.any.isRequired
+  result: PropTypes.any.isRequired,
+  title: PropTypes.string.isRequired
 }
 
 

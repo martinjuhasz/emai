@@ -1,11 +1,11 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import { classifySample, checkMessage, classifyMessage, declassifySample, saveSample } from '../actions'
+import { classifySample, classifyMessage, declassifySample, saveSample } from '../actions'
 import Sample from '../components/Sample'
 import { getSample as getSampleReducer } from '../reducers/samples'
 import { byId as recordingsReducer } from '../reducers/recordings'
 import { getSamples } from '../actions'
-import {Row, Col, Button } from 'react-bootstrap/lib'
+import {Col } from 'react-bootstrap/lib'
 import SampleToolbar from '../components/SampleToolbar'
 import SampleVideo from '../components/SampleVideo'
 
@@ -55,15 +55,15 @@ class SamplesContainer extends Component {
             <Col xs={12} sm={5} md={5} className='hspace'>
               <Col className='hspace'>
                 <SampleToolbar
-                  recording_id={params.recording_id} 
+                  recording_id={params.recording_id}
                   interval={params.interval}
-                  onReloadClicked={() => this.props.getSamples(params.recording_id, params.interval)} 
+                  onReloadClicked={() => this.props.getSamples(params.recording_id, params.interval)}
                   onClassifyClicked={this.handleClassifyClick}
                   onUndoClicked={() => this.props.declassifySample(sample)}
                   onSaveClicked={() => this.props.saveSample(sample, params.recording_id, params.interval)} />
               </Col>
               <Col>
-              {sample && 
+              {sample &&
                 <Sample
                   sample={sample}
                   onMessageClicked={(message_id) => { this.handleMessageClick(message_id) }}
@@ -77,13 +77,17 @@ class SamplesContainer extends Component {
 }
 
 SamplesContainer.propTypes = {
-  sample: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    messages: PropTypes.any.isRequired
-  })
+  sample: PropTypes.any,
+  recording: PropTypes.any,
+  params: PropTypes.any,
+  classifyMessage: PropTypes.func.isRequired,
+  classifySample: PropTypes.func.isRequired,
+  getSamples: PropTypes.func.isRequired,
+  declassifySample: PropTypes.func.isRequired,
+  saveSample: PropTypes.func.isRequired
 }
 
-function mapStateToProps(state, ownProps) { 
+function mapStateToProps(state, ownProps) {
   return {
     sample: getSampleReducer(state, ownProps.params.recording_id),
     recording: recordingsReducer(state, ownProps.params.recording_id)
@@ -94,7 +98,6 @@ export default connect(
   mapStateToProps,
   {
     classifySample,
-    checkMessage,
     getSamples,
     classifyMessage,
     declassifySample,

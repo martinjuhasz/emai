@@ -5,13 +5,13 @@ export default class VideoToolbar extends Component {
 
   render() {
     return (
-    	<ButtonToolbar>
+      <ButtonToolbar>
         <ButtonGroup>
-          <Button onTouchTap={() => this.props.onPlayClicked()}><Glyphicon glyph="play" /></Button>
-          <Button onTouchTap={() => this.props.onStopClicked()}><Glyphicon glyph="stop" /></Button>
+          <Button onTouchTap={() => this.props.onPlayClicked()}><Glyphicon glyph="play"/></Button>
+          <Button onTouchTap={() => this.props.onStopClicked()}><Glyphicon glyph="stop"/></Button>
         </ButtonGroup>
 
-    	</ButtonToolbar>
+      </ButtonToolbar>
     )
   }
 }

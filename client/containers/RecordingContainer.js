@@ -1,9 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { byId } from '../reducers/recordings'
-import Recording from '../components/Recording'
-import { Link } from 'react-router'
-import SamplesContainer from './SamplesContainer'
 import { LinkContainer } from 'react-router-bootstrap'
 import { Button } from 'react-bootstrap/lib'
 
@@ -38,16 +35,11 @@ class RecordingContainer extends Component {
 }
 
 RecordingContainer.propTypes = {
-  recording: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    display_name: PropTypes.string.isRequired,
-    started: PropTypes.string.isRequired,
-    stopped: PropTypes.string.isRequired,
-    data_sets: PropTypes.array
-  })
+  recording: PropTypes.any.isRequired,
+  children: PropTypes.node
 }
 
-function mapStateToProps(state, ownProps) { 
+function mapStateToProps(state, ownProps) {
   return {
     recording: byId(state, ownProps.params.recording_id)
   }

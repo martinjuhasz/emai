@@ -1,4 +1,3 @@
-import { combineReducers } from 'redux'
 import { RECEIVE_RECORDINGS, SELECT_RECORDING } from '../constants/ActionTypes'
 
 

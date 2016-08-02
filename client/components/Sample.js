@@ -1,5 +1,4 @@
 import React, { Component, PropTypes } from 'react'
-import { checkMessage } from '../actions'
 import { getMessages } from '../reducers/samples'
 import { connect } from 'react-redux'
 import {ListGroup } from 'react-bootstrap/lib'
@@ -14,8 +13,8 @@ class Sample extends Component {
             return (
               <MessageGroupItem
                 onTouchTap={() => this.props.onMessageClicked(message._id)}
-                key={message._id} 
-                message={message} 
+                key={message._id}
+                message={message}
                 selected_message={selected_message} />
             )
           })}
@@ -25,13 +24,13 @@ class Sample extends Component {
 }
 
 Sample.propTypes = {
-  sample: PropTypes.any.isRequired,
+  messages: PropTypes.array.isRequired,
   selected_message: PropTypes.string,
   onMessageClicked: PropTypes.func.isRequired
 }
 
 
-function mapStateToProps(state, ownProps) { 
+function mapStateToProps(state, ownProps) {
   return {
     messages: getMessages(state, ownProps.sample.messages)
   }

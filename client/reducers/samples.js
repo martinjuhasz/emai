@@ -8,10 +8,11 @@ function byRecording(state = {}, action) {
   switch(action.type) {
     case types.RECEIVE_SAMPLES:
       return { [action.recording_id]: action.samples.result }
-    case types.CLASSIFY_SAMPLE:
+    case types.CLASSIFY_SAMPLE: {
       const new_state = merge({}, state)
       pull(new_state[action.recording_id], action.sample.id)
       return new_state
+    }
     default:
       return state
   }
@@ -21,10 +22,11 @@ function samples(state = {}, action) {
   switch(action.type) {
     case types.RECEIVE_SAMPLES:
       return action.samples.entities.sample
-    case types.CLASSIFY_SAMPLE:
+    case types.CLASSIFY_SAMPLE: {
       const new_state = merge({}, state)
       unset(new_state, action.sample.id)
       return new_state
+    }
     default:
       return state
   }
@@ -34,10 +36,6 @@ function messages(state = {}, action) {
   switch(action.type) {
     case types.RECEIVE_SAMPLES:
       return action.samples.entities.message
-    case types.CHECK_MESSAGE:
-      return merge({}, state, {
-        [action.message]: merge({}, state[action.message], {hidden: true})
-      })
     case types.CLASSIFY_MESSAGE:
       return merge({}, state, {
         [action.message]: merge({}, state[action.message], {label: action.label})

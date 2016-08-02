@@ -1,7 +1,7 @@
 import fetch from 'isomorphic-fetch'
 import { Schema, arrayOf, normalize } from 'normalizr'
 
-const message = new Schema('message', { idAttribute: '_id' });
+const message = new Schema('message', {idAttribute: '_id'});
 const sample = new Schema('sample');
 sample.define({
   messages: arrayOf(message)
@@ -19,23 +19,11 @@ export default {
       .then(json => callback(normalize(json, arrayOf(sample))))
   },
 
-  classifySample(sample_id, label, hiddenMessages) {
-  	return fetch(`${api_url}/samples/${sample_id}`, {
-  	  method: 'PUT',
-  	  headers: {
-  	    'Accept': 'application/json',
-  	    'Content-Type': 'application/json'
-  	  },
-  	  body: JSON.stringify({
-  	    label: label,
-        hidden: hiddenMessages
-  	  })
-    })
-  },
-
   classifyMessages(messages) {
-    const json_messages = messages.filter(message => message.label > 0).map(message => {return {'id':message._id, 'label':message.label}})
-    if(!json_messages || json_messages.length <= 0) {
+    const json_messages = messages.filter(message => message.label > 0).map(message => {
+      return {'id': message._id, 'label': message.label}
+    })
+    if (!json_messages || json_messages.length <= 0) {
       return
     }
 
@@ -52,7 +40,7 @@ export default {
   },
 
   getRecordings(callback) {
-  	return fetch(`${api_url}/recordings`)
+    return fetch(`${api_url}/recordings`)
       .then(response => response.json())
       .then(json => callback(json))
   },

@@ -56,7 +56,7 @@ export function declassifySample(sample) {
     for(const message of messages) {
       dispatch({
         type: types.DECLASSIFY_MESSAGE,
-        message: message._id,
+        message: message._id
       })
     }
   }
@@ -68,14 +68,6 @@ export function classifyMessage(message, label) {
     message: message,
     label: label
   }
-}
-
-export function checkMessage(sample, message_id) {
-  return {
-      type: types.CHECK_MESSAGE,
-      sample: sample,
-      message: message_id
-    }
 }
 
 function checkForNewSamples(dispatch, state, recording_id ,interval) {

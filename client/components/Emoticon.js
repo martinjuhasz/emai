@@ -1,8 +1,5 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import ClassifierResult from './ClassifierResult';
-import SettingsResult from './SettingsResult';
-import Probes from './Probes';
 
 
 class Emoticon extends Component {

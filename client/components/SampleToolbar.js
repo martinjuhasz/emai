@@ -4,10 +4,10 @@ import { LinkContainer } from 'react-router-bootstrap'
 
 export default class SampleToolbar extends Component {
   render() {
-  	const { recording_id, interval } = this.props
+    const { recording_id, interval } = this.props
     return (
-    	<ButtonToolbar>
-    		<ButtonGroup>
+      <ButtonToolbar>
+        <ButtonGroup>
           <DropdownButton title={`${interval}s`} id='sample_interval_dropdown'>
             <LinkContainer to={`/recordings/${recording_id}/samples/1`}>
               <MenuItem>1s</MenuItem>
@@ -25,21 +25,24 @@ export default class SampleToolbar extends Component {
               <MenuItem>15s</MenuItem>
             </LinkContainer>
           </DropdownButton>
-          <Button onTouchTap={this.props.onReloadClicked}><Glyphicon glyph="repeat" /></Button>
-    		</ButtonGroup>
-
-        <ButtonGroup className='pull-right'>
-          <Button onTouchTap={() => this.props.onUndoClicked()}><Glyphicon glyph="trash" /></Button>
-          <Button onTouchTap={() => this.props.onSaveClicked()}><Glyphicon glyph="ok" /></Button>
+          <Button onTouchTap={this.props.onReloadClicked}><Glyphicon glyph="repeat"/></Button>
         </ButtonGroup>
 
-    		<ButtonGroup className='pull-right'>
-    		  <Button bsStyle="danger" onTouchTap={() => this.props.onClassifyClicked(2)}><Glyphicon glyph="thumbs-down" /></Button>
-          <Button bsStyle="warning" onTouchTap={() => this.props.onClassifyClicked(1)}><Glyphicon glyph="minus" /></Button>
-          <Button bsStyle="success" onTouchTap={() => this.props.onClassifyClicked(3)}><Glyphicon glyph="thumbs-up" /></Button>
-    		</ButtonGroup>
+        <ButtonGroup className='pull-right'>
+          <Button onTouchTap={() => this.props.onUndoClicked()}><Glyphicon glyph="trash"/></Button>
+          <Button onTouchTap={() => this.props.onSaveClicked()}><Glyphicon glyph="ok"/></Button>
+        </ButtonGroup>
 
-    	</ButtonToolbar>
+        <ButtonGroup className='pull-right'>
+          <Button bsStyle="danger" onTouchTap={() => this.props.onClassifyClicked(2)}><Glyphicon
+            glyph="thumbs-down"/></Button>
+          <Button bsStyle="warning" onTouchTap={() => this.props.onClassifyClicked(1)}><Glyphicon
+            glyph="minus"/></Button>
+          <Button bsStyle="success" onTouchTap={() => this.props.onClassifyClicked(3)}><Glyphicon
+            glyph="thumbs-up"/></Button>
+        </ButtonGroup>
+
+      </ButtonToolbar>
     )
   }
 }

@@ -1,10 +1,10 @@
-import React, { Component } from 'react'
+import React, { Component, PropTypes } from 'react'
 import SamplesContainer from './SamplesContainer'
 import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
 import TrainingsContainer from './TrainingsContainer'
 import TrainingContainer from './TrainingContainer'
-import { Router, Route, Link, IndexRoute, hashHistory, browserHistory } from 'react-router'
+import { Router, Route, Link, IndexRoute, hashHistory } from 'react-router'
 import {Grid, Row, Col } from 'react-bootstrap/lib'
 
 export default class App extends Component {
@@ -22,7 +22,7 @@ export default class App extends Component {
           <Route path='trainings' component={TrainingsContainer}>
             <Route path=':recording_id' component={TrainingContainer} />
           </Route>
-          
+
           <Route path='*' component={NotFound} />
         </Route>
       </Router>
@@ -30,25 +30,47 @@ export default class App extends Component {
   }
 }
 
+class Nav extends Component {
+  render() {
+    return(
+      <div>
+        <Link to="/recordings" activeClassName="active">Recordings</Link>
+        <Link to="/trainings" activeClassName="active">Learn</Link>
+        <Link to="/live" activeClassName="active">Live</Link>
+      </div>
+    )
+  }
+}
 
-const Nav = () => (
-  <div>
-    <Link to="/recordings" activeClassName="active">Recordings</Link>
-    <Link to="/trainings" activeClassName="active">Learn</Link>
-    <Link to="/live" activeClassName="active">Live</Link>
-  </div>
-);
+class Container extends Component {
+  render() {
+    return(
+      <Grid>
+        <Row>
+          <Col xs={12} sm={12}><Nav /></Col>
+          <Col xs={12} sm={12}>{this.props.children}</Col>
+        </Row>
+      </Grid>
+    )
+  }
+}
+Container.propTypes = {
+  children: PropTypes.node.isRequired
+}
 
-const Container = (props) =>
-  <Grid>
-    <Row>
-      <Col xs={12} sm={12}><Nav /></Col>
-      <Col xs={12} sm={12}>{props.children}</Col>
-    </Row>
-    
-    
-  </Grid>
 
-const Home = () => <h1>This is Home</h1>
+class Home extends Component {
+  render() {
+    return(
+      <h1>This is Home</h1>
+    )
+  }
+}
 
-const NotFound = () => <h1>404.. This page is not found!</h1>
+class NotFound extends Component {
+  render() {
+    return(
+      <h1>404.. This page is not found!</h1>
+    )
+  }
+}

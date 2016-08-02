@@ -1,4 +1,3 @@
-import { combineReducers } from 'redux'
 import { RECEIVE_CLASSIFIERS } from '../constants/ActionTypes'
 import merge from 'lodash/merge'
 

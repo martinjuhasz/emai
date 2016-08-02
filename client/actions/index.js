@@ -71,7 +71,6 @@ export function classifyMessage(message, label) {
 }
 
 export function checkMessage(sample, message_id) {
-  console.log(sample, message_id, types.CHECK_MESSAGE)
   return {
       type: types.CHECK_MESSAGE,
       sample: sample,

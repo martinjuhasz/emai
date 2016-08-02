@@ -16,7 +16,7 @@ const header = (recording) => {
 const default_content = (recording) => {
   return (
       <div>
-        <LinkContainer to={`/recordings/${recording.id}/samples/5`}>
+        <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
             <Button>Show Samples</Button>
         </LinkContainer>
       </div>

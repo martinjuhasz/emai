@@ -101,6 +101,7 @@ class Message(Document):
                         {'$mod': [{'$subtract': ['$created', recording.started]}, interval_milli]}
                     ]
                 },
+                'video_start': {'$first': '$created'},
                 'messages': {
                     '$push': '$_id'
                 }
@@ -115,11 +116,13 @@ class Message(Document):
             {'$unwind': '$messages'},
             {'$group': {
                 '_id': '$_id',
+                'video_start': {'$first': '$video_start'},
                 'messages': {"$push": "$messages"}
             }},
             {'$project': {
                 '_id': 0,
                 'id': '$_id',
+                'video_start': {'$divide': [{'$subtract': ['$video_start', recording.started]}, 1000]},
                 'messages': 1
             }},
         ]
@@ -344,6 +347,7 @@ class MessageSchema(Schema):
 class SampleSchema(Schema):
     id = fields.DateTimeField()
     messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
+    video_start = fields.IntegerField()
 
 
 

@@ -11,7 +11,7 @@ const api_url = 'http://10.0.1.88:8082'
 /* const api_url = 'http://0.0.0.0:8082' */
 
 export default {
-  
+
   getSamples(recording_id, interval, callback) {
     const url = `${api_url}/recordings/${recording_id}/samples/${interval}`
     return fetch(url)
@@ -64,7 +64,7 @@ export default {
       .then(json => callback(json))
   },
 
-  
+
 }
 
 

@@ -3,11 +3,11 @@ import { connect } from 'react-redux'
 import { classifySample, checkMessage, classifyMessage, declassifySample, saveSample } from '../actions'
 import Sample from '../components/Sample'
 import { getSample as getSampleReducer } from '../reducers/samples'
+import { byId as recordingsReducer } from '../reducers/recordings'
 import { getSamples } from '../actions'
-import Video from '../components/Video'
 import {Row, Col, Button } from 'react-bootstrap/lib'
 import SampleToolbar from '../components/SampleToolbar'
-
+import SampleVideo from '../components/SampleVideo'
 
 class SamplesContainer extends Component {
 
@@ -25,7 +25,6 @@ class SamplesContainer extends Component {
   }
 
   handleClassifyClick(label) {
-    console.log(label)
     if(this.state.selected_message) {
        this.props.classifyMessage(this.state.selected_message, label)
        this.setState({selected_message: null})
@@ -46,12 +45,12 @@ class SamplesContainer extends Component {
   }
 
   render() {
-    const { sample, params } = this.props
+    const { sample, params, recording } = this.props
 
     return (
-      <Row>
+      <div>
             <Col xs={12} sm={7} md={7}>
-              <Video video_id={params.recording_id} />
+              <SampleVideo video_id={recording.video_id} sample={sample} />
             </Col>
             <Col xs={12} sm={5} md={5} className='hspace'>
               <Col className='hspace'>
@@ -72,7 +71,7 @@ class SamplesContainer extends Component {
               }
               </Col>
             </Col>
-      </Row>
+      </div>
     )
   }
 }
@@ -86,7 +85,8 @@ SamplesContainer.propTypes = {
 
 function mapStateToProps(state, ownProps) { 
   return {
-    sample: getSampleReducer(state, ownProps.params.recording_id)
+    sample: getSampleReducer(state, ownProps.params.recording_id),
+    recording: recordingsReducer(state, ownProps.params.recording_id)
   }
 }
 

@@ -52,7 +52,7 @@ class SamplesContainer extends Component {
             <Col xs={12} sm={7} md={7}>
               <SampleVideo video_id={recording.video_id} sample={sample} />
             </Col>
-            <Col xs={12} sm={5} md={5} className='hspace'>
+            <Col xs={12} sm={5} md={5}>
               <Col className='hspace'>
                 <SampleToolbar
                   recording_id={params.recording_id}

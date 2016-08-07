@@ -4,8 +4,9 @@ import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
 import TrainingsContainer from './TrainingsContainer'
 import TrainingContainer from './TrainingContainer'
-import { Router, Route, Link, IndexRoute, hashHistory } from 'react-router'
-import {Grid, Row, Col } from 'react-bootstrap/lib'
+import { Router, Route,  IndexRoute, hashHistory } from 'react-router'
+import {Grid, Row, Col, Nav, NavItem } from 'react-bootstrap/lib'
+import { LinkContainer } from 'react-router-bootstrap'
 
 export default class App extends Component {
   render() {
@@ -19,7 +20,7 @@ export default class App extends Component {
             </Route>
           </Route>
 
-          <Route path='trainings' component={TrainingsContainer}>
+          <Route path='train' component={TrainingsContainer}>
             <Route path=':recording_id' component={TrainingContainer} />
           </Route>
 
@@ -30,14 +31,20 @@ export default class App extends Component {
   }
 }
 
-class Nav extends Component {
+class Navigation extends Component {
   render() {
     return(
-      <div>
-        <Link to="/recordings" activeClassName="active">Recordings</Link>
-        <Link to="/trainings" activeClassName="active">Learn</Link>
-        <Link to="/live" activeClassName="active">Live</Link>
-      </div>
+      <Nav bsStyle='pills'>
+        <LinkContainer to='recordings'>
+          <NavItem>Recordings</NavItem>
+        </LinkContainer>
+        <LinkContainer to='train'>
+          <NavItem>Train</NavItem>
+        </LinkContainer>
+        <LinkContainer to='live'>
+          <NavItem>Live</NavItem>
+        </LinkContainer>
+      </Nav>
     )
   }
 }
@@ -47,7 +54,7 @@ class Container extends Component {
     return(
       <Grid>
         <Row>
-          <Col xs={12} sm={12}><Nav /></Col>
+          <Col xs={12} sm={12} className='hspace'><Navigation /></Col>
           <Col xs={12} sm={12}>{this.props.children}</Col>
         </Row>
       </Grid>

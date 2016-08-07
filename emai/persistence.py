@@ -148,7 +148,10 @@ class Recording(Document):
     started = fields.DateTimeField(required=True)
     stopped = fields.DateTimeField()
     video_id = fields.StrField()
-    data_sets = fields.ListField(fields.IntField)
+    logo = fields.StrField()
+    profile_banner = fields.StrField()
+    video_banner = fields.StrField()
+    background_color = fields.StrField()
 
 
 @instance.register

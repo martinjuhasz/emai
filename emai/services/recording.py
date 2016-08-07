@@ -1,10 +1,8 @@
 from datetime import datetime
 from umongo import ValidationError
 from emai.datasource import ChatClient, StreamClient
-from emai.persistence import Message, create_sync_file
+from emai.persistence import Message, Recording
 from emai.utils import log, config
-from functools import partial
-from threading import Event
 from subprocess import Popen, PIPE
 from bson import ObjectId
 
@@ -21,6 +19,28 @@ class RecordingService(object):
         self.loop = loop
         self.recorder = Recorder(loop=loop)
         self.recorder.start()
+
+    async def create_recording(self, channel_details):
+        video_file_id = await self.start_recording(channel_details['name'])
+        properties = {
+            'channel_name': channel_details['name'],
+            'channel_id': channel_details['_id'],
+            'display_name': channel_details['display_name'],
+            'language': channel_details['language'],
+            'started': datetime.utcnow(),
+            'video_id': str(video_file_id)
+        }
+        if channel_details['logo']:
+            properties['logo'] = channel_details['logo']
+        if channel_details['profile_banner']:
+            properties['profile_banner'] = channel_details['profile_banner']
+        if channel_details['video_banner']:
+            properties['video_banner'] = channel_details['video_banner']
+        if channel_details['profile_banner_background_color']:
+            properties['background_color'] = channel_details['profile_banner_background_color']
+
+        recording = Recording(**properties)
+        await recording.commit()
 
     async def start_recording(self, channel):
         return await self.recorder.record_channel(channel)
@@ -41,8 +61,8 @@ class Recorder(object):
         pass
 
     async def record_channel(self, channel):
-        self._chat_client.join_channel('#{}'.format(channel))
         file_id = await self.record_stream(channel)
+        self._chat_client.join_channel('#{}'.format(channel))
         return file_id
 
     async def record_stream(self, channel):

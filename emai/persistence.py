@@ -59,10 +59,19 @@ def get_async_file_descriptor():
 class MongoJsonEncoder(json.JSONEncoder):
     def default(self, obj):
         # TODO: Why does this not work? => if isinstance(obj, Document):
-        if isinstance(obj, Recording) or isinstance(obj, Bag):
+        if isinstance(obj, Recording) or isinstance(obj, Bag) or isinstance(obj, Classifier):
             return obj.dump()
         return json.JSONEncoder.default(self, obj)
 
+
+@instance.register
+class Classifier(Document):
+    class Meta:
+        collection_name = 'classifiers'
+    title = fields.StrField(required=True)
+    training_sets = fields.ListField(fields.ObjectIdField())
+    type = fields.IntegerField()
+    settings = fields.DictField()
 
 @instance.register
 class Emoticon(EmbeddedDocument):

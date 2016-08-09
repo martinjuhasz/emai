@@ -1,4 +1,4 @@
-from emai.persistence import Message, Bag
+from emai.persistence import Message, Bag, Recording
 import asyncio
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -11,68 +11,121 @@ from bson import ObjectId
 import numpy as np
 from sklearn.grid_search import GridSearchCV
 from sklearn.pipeline import Pipeline
-from emai.utils import log
+from emai.utils import log, config
 from sklearn.metrics import precision_recall_fscore_support
+from enum import Enum
+import pickle
+
+
+class ClassifierType(Enum):
+    NaiveBayes = 1
+    SupportVectorMachine = 2
+    LogisticRegression = 3
+
 
 class TrainingService(object):
 
-    def __init__(self):
-        pass
+    @staticmethod
+    async def update_classifier(classifier, new_data):
+        training_sets = new_data['training_sets']
+        if training_sets:
+            classifier.training_sets = [ObjectId(r_id) for r_id in training_sets]
+
+        type = new_data['type']
+        if type and ClassifierType(type):
+            classifier.type = type
+
+        settings = new_data['settings']
+        if settings:
+            classifier.settings = settings
+
+        await classifier.commit()
 
     @staticmethod
-    async def test(recording_id):
-        # search trained bags
-        # bags = Bag.get_training_messages(recording_id)
-        # data = []
-        # target = []
-        # for document in (await bags.to_list(None)):
-        #     data.append(document['content'])
-        #     target.append(document['label'] - 2)
+    async def train(classifier):
+        if not classifier.settings:
+            raise ValueError('Classifier Settings must be set')
+        if 'ngram_range' not in classifier.settings:
+            raise ValueError('Classifier Settings ngram_range must be set')
+        if 'stop_words' not in classifier.settings:
+            raise ValueError('Classifier Settings stop_words must be set')
+        if 'idf' not in classifier.settings:
+            raise ValueError('Classifier Settings idf must be set')
 
-        data, target = await TrainingService.generate_sample_data(recording_id)
-
-        # create training data
+        # generate sample data
+        data, target = await TrainingService.generate_train_data(classifier)
         train_data, test_data, train_target, test_target = cross_validation.train_test_split(data, target, test_size=0.5, random_state=17)
 
-        # train classifiers
-        nb_classifier_result = ClassifierResult()
-        nb_classifier_result.train(MultinomialNB(), train_data, train_target)
-        svm_classifier_result = ClassifierResult()
-        svm_classifier_result.train(SGDClassifier(random_state=42), train_data, train_target, {
-            'clf__alpha': (1e-2, 1e-3),
-            'clf__loss': ['hinge', 'log', 'modified_huber']
-        })
-        logreg_classifier_result = ClassifierResult()
-        logreg_classifier_result.train(LogisticRegression(), train_data, train_target)
-        log.info('Created NaiveBayes Classifier: {}'.format(nb_classifier_result.settings))
-        log.info('Created SupportVectorMachine Classifier: {}'.format(svm_classifier_result.settings))
-        log.info('Created LogisticRegression Classifier: {}'.format(logreg_classifier_result.settings))
+        # configure pipeline
+        ngram_range = (1, classifier.settings['ngram_range'])
+        stop_words = 'english' if classifier.settings['stop_words'] else None
+        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
+        tfidf_tranformer = TfidfTransformer(use_idf=classifier.settings['idf'])
+        estimator = TrainingService.get_estimator(classifier)
+        pipeline = Pipeline([('vect', count_vectorizer), ('tfidf', tfidf_tranformer), ('cls', estimator)])
 
-        # test classifiers
-        nb_classifier_result.test(test_data, test_target)
-        svm_classifier_result.test(test_data, test_target)
-        logreg_classifier_result.test(test_data, test_target)
-        log.info('Tested NaiveBayes Classifier: {}'.format(nb_classifier_result.results))
-        log.info('Tested SupportVectorMachine Classifier: {}'.format(svm_classifier_result.results))
-        log.info('Tested LogisticRegression Classifier: {}'.format(logreg_classifier_result.results))
+        # train estimators
+        pipeline.fit(train_data, train_target)
 
-        # probe classifiers
-        unsampled_bags = Bag.get_training_messages(recording_id, label_eq={'$exists': False}, limit=300)
-        unsampled_data = [document['content'] for document in await unsampled_bags.to_list(None)]
-        nb_classifier_result.probe(unsampled_data)
-        #svm_classifier_result.probe(unsampled_data)
-        logreg_classifier_result.probe(unsampled_data)
-        log.info('Probed NaiveBayes Classifier')
-        #log.info('Probed SupportVectorMachine Classifier')
-        log.info('Probed LogisticRegression Classifier')
+        # test estimators
+        test_result = TrainingService.test_estimator(pipeline, test_data, test_target)
+        print(test_result)
+        #s = pickle.dumps(pipeline)
+        #clf2 = pickle.loads(s)
+        #test_result2 = TrainingService.test_estimator(clf2, test_data, test_target)
 
+
+        await TrainingService.review(classifier ,pipeline)
+
+    @staticmethod
+    async def review(classifier, estimator):
+        messages = await TrainingService.generate_review_data(classifier)
+        messages_data = [message.content for message in messages]
+
+        confidences = np.abs(estimator.decision_function(messages_data))
+        average_confidences = np.average(confidences, axis=1)
+        sorted_confidences = np.argsort(average_confidences)
+        high_confidences = sorted_confidences[-5:]
+        high_messages = [messages[message_id] for message_id in high_confidences.tolist()]
+        low_confidences = sorted_confidences[0:5]
+        low_messages = [messages[message_id] for message_id in low_confidences.tolist()]
+        return high_messages, low_messages
+
+
+    @staticmethod
+    def get_estimator(classifier):
+        classifier_type = ClassifierType(classifier.type)
+        if classifier_type == ClassifierType.LogisticRegression:
+            return LogisticRegression(random_state=42)
+        elif classifier_type == ClassifierType.SupportVectorMachine:
+            return SGDClassifier(random_state=10)
+        elif classifier_type == ClassifierType.NaiveBayes:
+            return MultinomialNB()
+
+    @staticmethod
+    def test_estimator(estimator, data, target):
+        predicted = estimator.predict(data)
+        precision, recall, fscore, support = precision_recall_fscore_support(target, predicted)
         return {
-            'nb': nb_classifier_result,
-            'svm': svm_classifier_result,
-            'logreg': logreg_classifier_result
+            'neutral': {
+                'precision': precision[0].item(),
+                'recall': recall[0].item(),
+                'fscore': fscore[0].item(),
+                'support': support[0].item()
+            },
+            'negative': {
+                'precision': precision[1].item(),
+                'recall': recall[1].item(),
+                'fscore': fscore[1].item(),
+                'support': support[1].item()
+            },
+            'positive': {
+                'precision': precision[2].item(),
+                'recall': recall[2].item(),
+                'fscore': fscore[2].item(),
+                'support': support[2].item()
+            }
         }
-
-
 
         # # Logistic Regression
         # lr_classifier = LogisticRegression()
@@ -101,89 +154,43 @@ class TrainingService(object):
         # predicted = gs_clf.predict(test_data)
         # print(metrics.classification_report(test_target, predicted, target_names=['negative', 'positive']))
 
-    @staticmethod
-    async def generate_sample_data(recording_id):
-        positive_count = len(await Bag.get_training_messages(recording_id, label_eq=3).to_list(None))
-        negative_count = len(await Bag.get_training_messages(recording_id, label_eq=2).to_list(None))
-        samples = min(positive_count, negative_count)
-        positives = await Bag.get_training_messages(recording_id, label_eq=3, samples=samples).to_list(None)
-        negatives = await Bag.get_training_messages(recording_id, label_eq=2, samples=samples).to_list(None)
-        data = []
-        target = []
-        for sample_id in range(0, samples):
-            data.append(positives[sample_id]['content'])
-            target.append(1)
-            data.append(negatives[sample_id]['content'])
-            target.append(0)
 
+    @staticmethod
+    async def generate_train_data(classifier):
+        channel_filter = await TrainingService.create_channel_filter(classifier)
+        positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
+        negative_cursor = Message.find({'$or': channel_filter, 'label': 2})
+        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1})
+
+        positive_count = await positive_cursor.count()
+        negative_count = await negative_cursor.count()
+        neutral_count = await neutral_cursor.count()
+        total_count = positive_count + negative_count + neutral_count
+        log.info('Train Data loaded: Positive: ~{}% Negative: ~{}% Neutral: ~{}%'.format(int(100/total_count * positive_count), int(100/total_count * negative_count), int(100/total_count * neutral_count)))
+
+        positives = [message.content for message in await positive_cursor.to_list(None)]
+        negatives = [message.content for message in await negative_cursor.to_list(None)]
+        neutrals = [message.content for message in await neutral_cursor.to_list(None)]
+
+        data = neutrals + negatives + positives
+        target = [0] * neutral_count + [1] * negative_count + [2] * positive_count
         return data, target
 
+    @staticmethod
+    async def generate_review_data(classifier):
+        channel_filter = await TrainingService.create_channel_filter(classifier)
+        unlabeled_cursor = Message.find({'$or': channel_filter, 'label': {'$exists': False}}).limit(10000)
+        unlabeled_count = await unlabeled_cursor.count()
+        log.info('Review Data loaded: {} documents'.format(unlabeled_count))
+        return await unlabeled_cursor.to_list(None)
 
 
-class ClassifierResult(object):
-    classifier = None
-    settings = {}
-    results = None
-    vocabulary = None
-    probes = {}
+    @staticmethod
+    async def create_channel_filter(classifier):
+        recordings = await Recording.find({'id': {'$in': classifier.training_sets}}).to_list(None)
+        return [{'channel_id': str(recording.channel_id), 'created': {'$gte': recording.started, '$lt': recording.stopped}} for recording in recordings]
 
-    def train(self, classifier, data, target, parameters={}):
-        pipeline = Pipeline([('vect', CountVectorizer()),
-                             ('tfidf', TfidfTransformer()),
-                             ('clf', classifier)])
-        combined_parameters = {**{
-            'vect__ngram_range': [(1, 1), (1, 2), (1, 3)],
-            'vect__stop_words': ['english', None],
-            'tfidf__use_idf': (True, False)
-        }, **parameters}
-        grid_search = GridSearchCV(pipeline, combined_parameters, n_jobs=-1)
-        grid_search.fit(data, target)
-        best_parameters, score, _ = max(grid_search.grid_scores_, key=lambda x: x[1])
 
-        # run count vectorizor again to vizualize dictionary
-        #sample_count_vectorizer = CountVectorizer(ngram_range=best_parameters['vect__ngram_range'], stop_words=best_parameters['vect__stop_words'])
-        #sample_count_vectorizer.fit_transform(data)
-        #self.vocabulary = sample_count_vectorizer.vocabulary_
 
-        self.classifier = grid_search
-        self.settings = best_parameters
 
-    def test(self, data, target):
-        predicted = self.classifier.predict(data)
-        precision, recall, fscore, support = precision_recall_fscore_support(target, predicted)
-        self.results = {
-            'negative': {
-                'precision': precision[0].item(),
-                'recall': recall[0].item(),
-                'fscore': fscore[0].item(),
-                'support': support[0].item()
-            },
-            'positive': {
-                'precision': precision[1].item(),
-                'recall': recall[1].item(),
-                'fscore': fscore[1].item(),
-                'support': support[1].item()
-            }
-        }
 
-    def probe(self, data):
-        if 'clf__loss' in self.settings and 'hinge' == self.settings['clf__loss']:
-            return
-        proba = self.classifier.predict_proba(data)
-        top_positive = proba[:, 1].argpartition(-100)[-100:]
-        top_negative = proba[:, 0].argpartition(-100)[-100:]
-        self.probes['positive'] = [(data[top_idx], proba[top_idx][1].item()) for top_idx in top_positive]
-        self.probes['negative'] = [(data[top_idx], proba[top_idx][0].item()) for top_idx in top_negative]
-
-    def get_results(self):
-        return {
-            'settings': self.settings,
-            'results': self.results,
-            'vocabulary': self.vocabulary,
-            'probes': self.probes
-        }
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-
-    loop.run_until_complete(TrainingService.test(ObjectId('578fbf877b958024092b8e63')))

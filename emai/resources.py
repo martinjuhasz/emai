@@ -3,7 +3,7 @@ from aiohttp_utils import Response
 from umongo import ValidationError
 from emai import services
 from emai.datasource import TwitchAPI
-from emai.persistence import Recording, Bag, load_json, to_objectid, get_async_file_descriptor
+from emai.persistence import Recording, Classifier, load_json, to_objectid, get_async_file_descriptor
 from emai.utils import log, config
 from aiohttp.web import StreamResponse
 from emai.services.datasets import DataSetService
@@ -30,6 +30,10 @@ def setup(app):
 
     cors.add(app.router.add_route('GET', '/training/{recording_id}', TrainResource.train_classifiers))
 
+    cors.add(app.router.add_route('GET', '/classifiers', ClassifierResource.get_classifiers))
+    cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create_classifier))
+    cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update_classifier))
+    cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train_classifier))
 
 
 class Resource(object):
@@ -150,3 +154,65 @@ class TrainResource(Resource):
             'nb': test['nb'].get_results(),
             'svm': test['svm'].get_results()
         })
+
+
+class ClassifierResource(Resource):
+
+    @staticmethod
+    async def get_classifiers(request):
+        classifiers = await Classifier.find().to_list(None)
+        return Response(classifiers)
+
+    @staticmethod
+    async def create_classifier(request):
+        # check if malformed request
+        body_data = await load_json(request)
+        if not body_data or not 'title' in body_data or not body_data['title'].strip():
+            return Response(status=400)
+        title = body_data['title'].strip()
+
+        # create classifier
+        try:
+            classifier = Classifier(title=title)
+            await classifier.commit()
+            return Response(classifier)
+        except ValidationError as error:
+            log.error(error)
+            return Response(status=500)
+
+    @staticmethod
+    async def update_classifier(request):
+        # check url parameters
+        classifier_id = to_objectid(request.match_info['classifier_id'])
+        if not classifier_id:
+            return Response(status=400)
+
+        # check if recording exists
+        classifier = await Classifier.find_one({'_id': classifier_id})
+
+        # check if malformed request
+        body_data = await load_json(request)
+        if not body_data:
+            return Response(status=400)
+
+        try:
+            await TrainingService.update_classifier(classifier, body_data)
+        except ValueError as error:
+            log.error(error)
+            return Response(status=400)
+
+        return Response()
+
+    @staticmethod
+    async def train_classifier(request):
+        # check url parameters
+        classifier_id = to_objectid(request.match_info['classifier_id'])
+        if not classifier_id:
+            return Response(status=400)
+
+        # check if recording exists
+        classifier = await Classifier.find_one({'_id': classifier_id})
+
+        await TrainingService.train(classifier)
+
+        return Response()

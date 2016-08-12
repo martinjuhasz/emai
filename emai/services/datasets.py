@@ -1,8 +1,5 @@
-from emai.persistence import Message, Bag, SampleSchema
-from emai.exceptions import ResourceUnavailableException, ResourceExistsException
+from emai.persistence import Message, SampleSchema
 from emai.utils import config, log
-import asyncio
-import re
 from bson import ObjectId
 from bson.errors import InvalidId
 
@@ -20,8 +17,8 @@ class DataSetService(object):
 
     @staticmethod
     async def get_samples(recording, interval):
-        pool_size = config.getint('dataset', 'random_sample_pool')
-        sample_size = config.getint('dataset', 'random_sample_size')
+        pool_size = config.getint('training', 'random_sample_pool')
+        sample_size = config.getint('training', 'random_sample_size')
         samples_future = Message.find_sample(recording, interval, limit=pool_size, samples=sample_size).to_list(None)
         samples = []
         schema = SampleSchema()

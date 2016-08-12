@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from 'react'
 import SamplesContainer from './SamplesContainer'
 import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
-import TrainingsContainer from './TrainingsContainer'
+import ClassifierContainer from './ClassifierContainer'
 import TrainingContainer from './TrainingContainer'
 import { Router, Route,  IndexRoute, hashHistory } from 'react-router'
 import {Grid, Row, Col, Nav, NavItem } from 'react-bootstrap/lib'
@@ -20,8 +20,8 @@ export default class App extends Component {
             </Route>
           </Route>
 
-          <Route path='train' component={TrainingsContainer}>
-            <Route path=':recording_id' component={TrainingContainer} />
+          <Route path='train' component={TrainingContainer}>
+            <Route path=':classifier_id' component={ClassifierContainer} />
           </Route>
 
           <Route path='*' component={NotFound} />

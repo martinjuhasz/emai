@@ -2,7 +2,7 @@ import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { classifySample, classifyMessage, declassifySample, saveSample } from '../actions'
 import Sample from '../components/Sample'
-import { getSample as getSampleReducer } from '../reducers/samples'
+import { getSample as getSampleReducer, getMessagesForRecord } from '../reducers/samples'
 import { byId as recordingsReducer } from '../reducers/recordings'
 import { getSamples } from '../actions'
 import {Col } from 'react-bootstrap/lib'
@@ -45,7 +45,7 @@ class SamplesContainer extends Component {
   }
 
   render() {
-    const { sample, params, recording } = this.props
+    const { sample, params, recording, messages } = this.props
 
     return (
       <div>
@@ -65,7 +65,7 @@ class SamplesContainer extends Component {
               <Col>
               {sample &&
                 <Sample
-                  sample={sample}
+                  messages={messages}
                   onMessageClicked={(message_id) => { this.handleMessageClick(message_id) }}
                   selected_message={this.state.selected_message} />
               }
@@ -78,6 +78,7 @@ class SamplesContainer extends Component {
 
 SamplesContainer.propTypes = {
   sample: PropTypes.any,
+  messages: PropTypes.any,
   recording: PropTypes.any,
   params: PropTypes.any,
   classifyMessage: PropTypes.func.isRequired,
@@ -90,6 +91,7 @@ SamplesContainer.propTypes = {
 function mapStateToProps(state, ownProps) {
   return {
     sample: getSampleReducer(state, ownProps.params.recording_id),
+    messages: getMessagesForRecord(state, ownProps.params.recording_id),
     recording: recordingsReducer(state, ownProps.params.recording_id)
   }
 }

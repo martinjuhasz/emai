@@ -92,18 +92,78 @@ export function getRecordings() {
   }
 }
 
-export function getClassifiers(recording_id) {
+export function getClassifiers() {
   return dispatch => {
-    emai.getClassifiers(recording_id, classifiers => {
-      dispatch(receiveClassifiers(recording_id, classifiers))
+    emai.getClassifiers(classifiers => {
+      dispatch(receiveClassifiers(classifiers))
     })
   }
 }
 
-function receiveClassifiers(recording_id, classifiers) {
+function receiveClassifiers(classifiers) {
   return {
     type: types.RECEIVE_CLASSIFIERS,
-    classifiers: classifiers,
-    recording_id: recording_id
+    classifiers: classifiers
+  }
+}
+
+export function getReview(classifier_id) {
+  return dispatch => {
+    emai.getReview(classifier_id, reviews => {
+      dispatch(receiveReview(classifier_id, reviews))
+    })
+  }
+}
+
+function receiveReview(classifier_id, reviews) {
+  return {
+    type: types.RECEIVE_REVIEW,
+    reviews: reviews,
+    classifier: classifier_id
+  }
+}
+
+
+export function classifyReview(messages, label) {
+  return (dispatch, getState) => {
+    const unlabeled_messages = messages.filter(message => { return (!message.label || message.label <= 0)})
+    for(const message of unlabeled_messages) {
+      dispatch({
+        type: types.CLASSIFY_REVIEW,
+        message: message.id,
+        label: label
+      })
+    }
+  }
+}
+
+export function saveReview(classifier, messages) {
+  return (dispatch, getState) => {
+    dispatch({
+      type: types.SAVE_REVIEW,
+      messages: messages,
+      classifier: classifier
+    })
+    emai.classifyMessages(messages)
+  }
+}
+
+export function declassifyReview(messages) {
+  return (dispatch, getState) => {
+    const state = getState()
+    for(const message of messages) {
+      dispatch({
+        type: types.DECLASSIFY_REVIEW,
+        message: message.id
+      })
+    }
+  }
+}
+
+export function classifyReviewMessage(message, label) {
+  return {
+    type: types.CLASSIFY_REVIEW,
+    message: message,
+    label: label
   }
 }

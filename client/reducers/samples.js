@@ -61,6 +61,14 @@ export function getSample(state, recording_id) {
   return (samples && samples[0]) ? samples[0] : null
 }
 
+export function getMessagesForRecord(state, recording_id) {
+  const sample = getSample(state, recording_id)
+  if (!sample || !sample.messages || sample.messages.length <= 0) {
+    return null
+  }
+  return getMessages(state, sample.messages)
+}
+
 export function getMessages(state, message_ids) {
   return message_ids.map(mid => state.samples.messages[mid])
 }

@@ -1,4 +1,4 @@
-from emai.persistence import Message, Bag, Recording
+from emai.persistence import Message, Recording
 import asyncio
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -69,16 +69,19 @@ class TrainingService(object):
 
         # test estimators
         test_result = TrainingService.test_estimator(pipeline, test_data, test_target)
-        print(test_result)
-        #s = pickle.dumps(pipeline)
-        #clf2 = pickle.loads(s)
-        #test_result2 = TrainingService.test_estimator(clf2, test_data, test_target)
 
 
-        await TrainingService.review(classifier ,pipeline)
+        # update classifier
+        classifier_state = pickle.dumps(pipeline)
+        classifier.results.append(test_result)
+        classifier.state = classifier_state
+        await classifier.commit()
+
+        return classifier
 
     @staticmethod
-    async def review(classifier, estimator):
+    async def review(classifier):
+        estimator = pickle.loads(classifier.state)
         messages = await TrainingService.generate_review_data(classifier)
         messages_data = [message.content for message in messages]
 
@@ -87,9 +90,9 @@ class TrainingService(object):
         sorted_confidences = np.argsort(average_confidences)
         high_confidences = sorted_confidences[-5:]
         high_messages = [messages[message_id] for message_id in high_confidences.tolist()]
-        low_confidences = sorted_confidences[0:5]
+        low_confidences = sorted_confidences[0:15]
         low_messages = [messages[message_id] for message_id in low_confidences.tolist()]
-        return high_messages, low_messages
+        return high_messages + low_messages
 
 
     @staticmethod

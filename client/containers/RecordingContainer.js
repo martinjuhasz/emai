@@ -35,7 +35,7 @@ class RecordingContainer extends Component {
 }
 
 RecordingContainer.propTypes = {
-  recording: PropTypes.any.isRequired,
+  recording: PropTypes.any,
   children: PropTypes.node
 }
 

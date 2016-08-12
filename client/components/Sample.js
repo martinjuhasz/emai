@@ -10,10 +10,11 @@ class Sample extends Component {
     return (
       <ListGroup>
           {messages.map(message => {
+            const message_id = message._id || message.id
             return (
               <MessageGroupItem
-                onTouchTap={() => this.props.onMessageClicked(message._id)}
-                key={message._id}
+                onTouchTap={() => this.props.onMessageClicked(message_id)}
+                key={message_id}
                 message={message}
                 selected_message={selected_message} />
             )
@@ -32,7 +33,7 @@ Sample.propTypes = {
 
 function mapStateToProps(state, ownProps) {
   return {
-    messages: getMessages(state, ownProps.sample.messages)
+
   }
 }
 

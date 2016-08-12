@@ -1,4 +1,4 @@
-import { RECEIVE_RECORDINGS, SELECT_RECORDING } from '../constants/ActionTypes'
+import { RECEIVE_RECORDINGS } from '../constants/ActionTypes'
 
 
 function recordings(state = {all:[]}, action) {
@@ -6,10 +6,6 @@ function recordings(state = {all:[]}, action) {
     case RECEIVE_RECORDINGS:
       return Object.assign({}, state, {
         all: action.recordings
-      })
-    case SELECT_RECORDING:
-      return Object.assign({}, state, {
-        selected: action.recording_id
       })
     default:
       return state

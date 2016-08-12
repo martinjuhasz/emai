@@ -3,30 +3,45 @@ import {ButtonToolbar, ButtonGroup, Button, Glyphicon, DropdownButton, MenuItem 
 import { LinkContainer } from 'react-router-bootstrap'
 
 export default class SampleToolbar extends Component {
+
+  constructor() {
+    super()
+    this.renderSampleNavigation = this.renderSampleNavigation.bind(this)
+  }
+
+  renderSampleNavigation(recording_id, interval) {
+    if(!recording_id || !interval) {
+      return null
+    }
+    return(
+      <ButtonGroup>
+        <DropdownButton title={`${interval}s`} id='sample_interval_dropdown'>
+          <LinkContainer to={`/recordings/${recording_id}/samples/1`}>
+            <MenuItem>1s</MenuItem>
+          </LinkContainer>
+          <LinkContainer to={`/recordings/${recording_id}/samples/3`}>
+            <MenuItem>3s</MenuItem>
+          </LinkContainer>
+          <LinkContainer to={`/recordings/${recording_id}/samples/5`}>
+            <MenuItem>5s</MenuItem>
+          </LinkContainer>
+          <LinkContainer to={`/recordings/${recording_id}/samples/10`}>
+            <MenuItem>10s</MenuItem>
+          </LinkContainer>
+          <LinkContainer to={`/recordings/${recording_id}/samples/15`}>
+            <MenuItem>15s</MenuItem>
+          </LinkContainer>
+        </DropdownButton>
+        <Button onTouchTap={this.props.onReloadClicked}><Glyphicon glyph="repeat"/></Button>
+      </ButtonGroup>
+    )
+  }
+
   render() {
     const { recording_id, interval } = this.props
     return (
       <ButtonToolbar>
-        <ButtonGroup>
-          <DropdownButton title={`${interval}s`} id='sample_interval_dropdown'>
-            <LinkContainer to={`/recordings/${recording_id}/samples/1`}>
-              <MenuItem>1s</MenuItem>
-            </LinkContainer>
-            <LinkContainer to={`/recordings/${recording_id}/samples/3`}>
-              <MenuItem>3s</MenuItem>
-            </LinkContainer>
-            <LinkContainer to={`/recordings/${recording_id}/samples/5`}>
-              <MenuItem>5s</MenuItem>
-            </LinkContainer>
-            <LinkContainer to={`/recordings/${recording_id}/samples/10`}>
-              <MenuItem>10s</MenuItem>
-            </LinkContainer>
-            <LinkContainer to={`/recordings/${recording_id}/samples/15`}>
-              <MenuItem>15s</MenuItem>
-            </LinkContainer>
-          </DropdownButton>
-          <Button onTouchTap={this.props.onReloadClicked}><Glyphicon glyph="repeat"/></Button>
-        </ButtonGroup>
+        {this.renderSampleNavigation(recording_id, interval)}
 
         <ButtonGroup className='pull-right'>
           <Button onTouchTap={() => this.props.onUndoClicked()}><Glyphicon glyph="trash"/></Button>
@@ -48,9 +63,9 @@ export default class SampleToolbar extends Component {
 }
 
 SampleToolbar.propTypes = {
-  recording_id: PropTypes.string.isRequired,
-  interval: PropTypes.string.isRequired,
-  onReloadClicked: PropTypes.func.isRequired,
+  recording_id: PropTypes.string,
+  interval: PropTypes.string,
+  onReloadClicked: PropTypes.func,
   onClassifyClicked: PropTypes.func.isRequired,
   onUndoClicked: PropTypes.func.isRequired,
   onSaveClicked: PropTypes.func.isRequired

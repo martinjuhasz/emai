@@ -6,9 +6,10 @@ const sample = new Schema('sample');
 sample.define({
   messages: arrayOf(message)
 })
+const review = new Schema('review');
 
-const api_url = 'http://10.0.1.88:8082'
-/* const api_url = 'http://0.0.0.0:8082' */
+/* const api_url = 'http://10.0.1.88:8082' */
+const api_url = 'http://0.0.0.0:8082'
 
 export default {
 
@@ -21,7 +22,7 @@ export default {
 
   classifyMessages(messages) {
     const json_messages = messages.filter(message => message.label > 0).map(message => {
-      return {'id': message._id, 'label': message.label}
+      return {'id': (message._id || message.id), 'label': message.label}
     })
     if (!json_messages || json_messages.length <= 0) {
       return
@@ -45,11 +46,18 @@ export default {
       .then(json => callback(json))
   },
 
-  getClassifiers(recording_id, callback) {
-    const url = `${api_url}/training/${recording_id}`
+  getClassifiers(callback) {
+    const url = `${api_url}/classifiers`
     return fetch(url)
       .then(response => response.json())
       .then(json => callback(json))
+  },
+
+  getReview(classifier_id, callback) {
+    const url = `${api_url}/classifiers/${classifier_id}/review`
+    return fetch(url)
+      .then(response => response.json())
+      .then(json => callback(normalize(json, arrayOf(review))))
   },
 
 

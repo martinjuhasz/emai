@@ -6,7 +6,7 @@ import Emoticon from './Emoticon'
 class MessageGroupItem extends Component {
 
   getListStyle(message, selected_message) {
-    if (selected_message && selected_message === message._id) {
+    if (selected_message && selected_message === (message._id || message.id)) {
       return 'info'
     }
     if ('label' in message) {

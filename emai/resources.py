@@ -34,6 +34,7 @@ def setup(app):
     cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create_classifier))
     cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update_classifier))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train_classifier))
+    cors.add(app.router.add_route('GET', '/classifiers/{classifier_id}/review', ClassifierResource.review_classifier))
 
 
 class Resource(object):
@@ -215,4 +216,18 @@ class ClassifierResource(Resource):
 
         await TrainingService.train(classifier)
 
-        return Response()
+        return Response(classifier)
+
+    @staticmethod
+    async def review_classifier(request):
+        # check url parameters
+        classifier_id = to_objectid(request.match_info['classifier_id'])
+        if not classifier_id:
+            return Response(status=400)
+
+        # check if recording exists
+        classifier = await Classifier.find_one({'_id': classifier_id})
+
+        messages = await TrainingService.review(classifier)
+
+        return Response(messages)

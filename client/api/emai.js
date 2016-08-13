@@ -20,7 +20,7 @@ export default {
       .then(json => callback(normalize(json, arrayOf(sample))))
   },
 
-  classifyMessages(messages) {
+  classifyMessages(messages, callback) {
     const json_messages = messages.filter(message => message.label > 0).map(message => {
       return {'id': (message._id || message.id), 'label': message.label}
     })
@@ -38,6 +38,7 @@ export default {
         messages: json_messages
       })
     })
+      .then(() => callback())
   },
 
   getRecordings(callback) {
@@ -58,6 +59,13 @@ export default {
     return fetch(url)
       .then(response => response.json())
       .then(json => callback(normalize(json, arrayOf(review))))
+  },
+
+  trainClassifier(classifier_id, callback) {
+    const url = `${api_url}/classifiers/${classifier_id}/train`
+    return fetch(url,  {method: 'POST'})
+      .then(response => response.json())
+      .then(json => callback(json))
   },
 
 

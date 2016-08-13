@@ -1,6 +1,7 @@
 import emai from '../api/emai'
 import * as types from '../constants/ActionTypes'
 import { getSamples as getSamplesReducer, getUnlabeledMessages, getMessages } from '../reducers/samples'
+import { getReviews as getReviewsReducer } from '../reducers/classifiers'
 
 function receiveSamples(recording_id, samples) {
   return {
@@ -43,9 +44,9 @@ export function saveSample(sample, recording_id, interval) {
 
     const state = getState()
     const messages = getMessages(state, sample.messages)
-    emai.classifyMessages(messages)
-
-    checkForNewSamples(dispatch, state, recording_id, interval)
+    emai.classifyMessages(messages, () => {
+      checkForNewSamples(dispatch, state, recording_id, interval)
+    })
   }
 }
 
@@ -107,6 +108,13 @@ function receiveClassifiers(classifiers) {
   }
 }
 
+function receiveClassifier(classifier) {
+  return {
+    type: types.RECEIVE_CLASSIFIER,
+    classifier: classifier
+  }
+}
+
 export function getReview(classifier_id) {
   return dispatch => {
     emai.getReview(classifier_id, reviews => {
@@ -144,7 +152,26 @@ export function saveReview(classifier, messages) {
       messages: messages,
       classifier: classifier
     })
-    emai.classifyMessages(messages)
+    emai.classifyMessages(messages, () => {
+      checkForNewReviews(dispatch, getState(), classifier)
+    })
+  }
+}
+
+function checkForNewReviews(dispatch, state, classifier) {
+  const reviews = getReviewsReducer(state, classifier)
+  if (!reviews || (reviews && reviews.length <= 0)) {
+    dispatch(getReview(classifier))
+    dispatch(trainClassifier(classifier))
+
+  }
+}
+
+export function trainClassifier(classifier_id) {
+  return dispatch => {
+    emai.trainClassifier(classifier_id, classifier => {
+      dispatch(receiveClassifier(classifier))
+    })
   }
 }
 

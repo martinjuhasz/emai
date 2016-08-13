@@ -72,6 +72,31 @@ class BytesField(BaseField, ma_fields.String):
             return value
         return super()._deserialize(value, attr, data)
 
+
+@instance.register
+class PerformanceResult(EmbeddedDocument):
+    time = fields.ListField(fields.DateTimeField())
+    precision = fields.ListField(fields.FloatField())
+    recall = fields.ListField(fields.FloatField())
+    fscore = fields.ListField(fields.FloatField())
+    support = fields.ListField(fields.IntegerField())
+
+
+@instance.register
+class Performance(EmbeddedDocument):
+    positive = fields.EmbeddedField(PerformanceResult)
+    negative = fields.EmbeddedField(PerformanceResult)
+    neutral = fields.EmbeddedField(PerformanceResult)
+
+    @staticmethod
+    def create_empty_performance():
+        performance = Performance()
+        performance.positive = PerformanceResult()
+        performance.negative = PerformanceResult()
+        performance.neutral = PerformanceResult()
+        return performance
+
+
 @instance.register
 class Classifier(Document):
     class Meta:
@@ -81,7 +106,8 @@ class Classifier(Document):
     type = fields.IntegerField()
     settings = fields.DictField()
     state = BytesField(load_only=True, dump_only=True)
-    results = fields.ListField(fields.DictField())
+    performance = fields.EmbeddedField(Performance)
+
 
 @instance.register
 class Emoticon(EmbeddedDocument):

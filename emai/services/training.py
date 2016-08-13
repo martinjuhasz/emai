@@ -1,4 +1,4 @@
-from emai.persistence import Message, Recording
+from emai.persistence import Message, Recording, Performance, PerformanceResult
 import asyncio
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -15,6 +15,7 @@ from emai.utils import log, config
 from sklearn.metrics import precision_recall_fscore_support
 from enum import Enum
 import pickle
+from datetime import datetime
 
 
 class ClassifierType(Enum):
@@ -68,12 +69,11 @@ class TrainingService(object):
         pipeline.fit(train_data, train_target)
 
         # test estimators
-        test_result = TrainingService.test_estimator(pipeline, test_data, test_target)
+        await TrainingService.test_classifier(classifier, pipeline, test_data, test_target)
 
 
         # update classifier
         classifier_state = pickle.dumps(pipeline)
-        classifier.results.append(test_result)
         classifier.state = classifier_state
         await classifier.commit()
 
@@ -92,7 +92,9 @@ class TrainingService(object):
         high_messages = [messages[message_id] for message_id in high_confidences.tolist()]
         low_confidences = sorted_confidences[0:15]
         low_messages = [messages[message_id] for message_id in low_confidences.tolist()]
-        return high_messages + low_messages
+        return_messages = high_messages + low_messages
+        np.random.shuffle(return_messages)
+        return return_messages
 
 
     @staticmethod
@@ -106,29 +108,32 @@ class TrainingService(object):
             return MultinomialNB()
 
     @staticmethod
-    def test_estimator(estimator, data, target):
+    async def test_classifier(classifier, estimator, data, target):
         predicted = estimator.predict(data)
         precision, recall, fscore, support = precision_recall_fscore_support(target, predicted)
-        return {
-            'neutral': {
-                'precision': precision[0].item(),
-                'recall': recall[0].item(),
-                'fscore': fscore[0].item(),
-                'support': support[0].item()
-            },
-            'negative': {
-                'precision': precision[1].item(),
-                'recall': recall[1].item(),
-                'fscore': fscore[1].item(),
-                'support': support[1].item()
-            },
-            'positive': {
-                'precision': precision[2].item(),
-                'recall': recall[2].item(),
-                'fscore': fscore[2].item(),
-                'support': support[2].item()
-            }
-        }
+
+        time = datetime.utcnow()
+        if not classifier.performance:
+            classifier.performance = Performance.create_empty_performance()
+        classifier.performance._modified = True  # TODO: is this a bug? shouldn't have to do that: report
+
+        classifier.performance.neutral.time.append(time)
+        classifier.performance.neutral.precision.append(precision[0].item())
+        classifier.performance.neutral.recall.append(recall[0].item())
+        classifier.performance.neutral.fscore.append(fscore[0].item())
+        classifier.performance.neutral.support.append(support[0].item())
+
+        classifier.performance.negative.time.append(time)
+        classifier.performance.negative.precision.append(precision[1].item())
+        classifier.performance.negative.recall.append(recall[1].item())
+        classifier.performance.negative.fscore.append(fscore[1].item())
+        classifier.performance.negative.support.append(support[1].item())
+
+        classifier.performance.positive.time.append(time)
+        classifier.performance.positive.precision.append(precision[2].item())
+        classifier.performance.positive.recall.append(recall[2].item())
+        classifier.performance.positive.fscore.append(fscore[2].item())
+        classifier.performance.positive.support.append(support[2].item())
 
         # # Logistic Regression
         # lr_classifier = LogisticRegression()

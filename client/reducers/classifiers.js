@@ -2,13 +2,20 @@ import { combineReducers } from 'redux'
 import * as types from '../constants/ActionTypes'
 import merge from 'lodash/merge'
 import unset from 'lodash/unset'
-import pull from 'lodash/pull'
-import remove from 'lodash/remove'
+import pullAll from 'lodash/pullAll'
+import indexOf from 'lodash/indexOf'
+import find from 'lodash/find'
 
 export function all(state = [], action) {
   switch (action.type) {
     case types.RECEIVE_CLASSIFIERS:
       return action.classifiers
+    case types.RECEIVE_CLASSIFIER: {
+      const new_state = merge([], state)
+      const index = indexOf(new_state, find(new_state, {id: action.classifier.id}))
+      new_state[index] = action.classifier
+      return new_state
+    }
     default:
       return state
   }
@@ -22,8 +29,9 @@ export function reviews(state = {}, action) {
       })
     }
     case types.SAVE_REVIEW: {
+      const message_ids = action.messages.map(message => message.id)
       const new_state = merge({}, state)
-      unset(new_state, action.classifier)
+      pullAll(new_state[action.classifier], message_ids)
       return new_state
     }
     default:
@@ -59,12 +67,12 @@ export function byId(state, classifier_id) {
   return state.classifiers.all.find(classifier => classifier.id === classifier_id)
 }
 
-export function getReviews(state, classifier_id) {
+export function getReviews(state, classifier_id, limit=10) {
   const message_ids = state.classifiers.reviews[classifier_id]
   if (!message_ids || message_ids.length <= 0) {
     return null
   }
-  return state.classifiers.reviews[classifier_id].map(mid => state.classifiers.messages[mid])
+  return state.classifiers.reviews[classifier_id].map(mid => state.classifiers.messages[mid]).slice(0, limit)
 }
 
 export default combineReducers({

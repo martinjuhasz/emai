@@ -3,11 +3,14 @@ import { connect } from 'react-redux'
 import { byId, getReviews } from '../reducers/classifiers'
 import { getReview } from '../actions'
 import Review from '../components/Review'
+import ClassifierResultChart from '../components/ClassifierResultChart'
+import { Col } from 'react-bootstrap/lib'
 
 class TrainingContainer extends Component {
 
   constructor() {
     super()
+    this.renderResult = this.renderResult.bind(this)
     this.renderReview = this.renderReview.bind(this)
   }
 
@@ -18,8 +21,26 @@ class TrainingContainer extends Component {
       <div>
         <h2>{classifier.title}</h2>
         <div onTouchTap={() => this.props.onGetReviewClicked()}>review Classifier</div>
-        { this.renderReview() }
+
+
+        <h3>Performance</h3>
+        <Col xs={12} sm={7} md={7}>
+          { this.renderResult() }
+        </Col>
+        <Col xs={12} sm={5} md={5}>
+          { this.renderReview() }
+        </Col>
       </div>
+    )
+  }
+
+  renderResult() {
+    const { classifier } = this.props
+    if(!classifier) {
+      return null
+    }
+    return(
+      <ClassifierResultChart classifier={classifier} />
     )
   }
 

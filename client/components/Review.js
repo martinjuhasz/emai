@@ -33,7 +33,7 @@ class Review extends Component {
     const { messages, classifier } = this.props
 
     return (
-      <Col xs={12} sm={5} md={5}>
+      <div>
         <Col className='hspace'>
           <SampleToolbar
             onClassifyClicked={this.handleClassifyClick}
@@ -48,7 +48,7 @@ class Review extends Component {
             selected_message={this.state.selected_message} />
           }
         </Col>
-      </Col>
+      </div>
     )
   }
 }

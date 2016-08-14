@@ -81,7 +81,8 @@ export default {
         settings: settings
       })
     })
-      .then(response => callback())
+      .then(response => response.json())
+      .then(json => callback(json))
   }
 
 

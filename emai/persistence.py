@@ -108,6 +108,13 @@ class Classifier(Document):
     state = BytesField(load_only=True, dump_only=True)
     performance = fields.EmbeddedField(Performance)
 
+    async def reset(self):
+        await Classifier.collection.update({'_id': self.id}, {'$unset': {'state': '', 'performance': ''}})
+        if self.state:
+            delattr(self, 'state')
+        if self.performance:
+            delattr(self, 'performance')
+
 
 @instance.register
 class Emoticon(EmbeddedDocument):

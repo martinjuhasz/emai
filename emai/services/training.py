@@ -39,6 +39,8 @@ class TrainingService(object):
                 classifier.settings = new_data['settings']
 
         await classifier.commit()
+        await classifier.reset()
+
 
     @staticmethod
     async def train(classifier):

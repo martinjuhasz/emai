@@ -1,11 +1,11 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { byId, getReviews } from '../reducers/classifiers'
-import { getReview } from '../actions'
+import { getReview, trainClassifier } from '../actions'
 import Review from '../components/Review'
 import ClassifierResultChart from '../components/ClassifierResultChart'
 import ClassifierSettings from '../components/ClassifierSettings'
-import { Col } from 'react-bootstrap/lib'
+import { Col, ButtonToolbar, Button } from 'react-bootstrap/lib'
 
 class TrainingContainer extends Component {
 
@@ -21,9 +21,13 @@ class TrainingContainer extends Component {
     return (
       <div>
         <h2>{classifier.title}</h2>
-        <ClassifierSettings classifier={classifier} />
-        <div onTouchTap={() => this.props.onGetReviewClicked()}>review Classifier</div>
 
+        <ButtonToolbar>
+          <Button bsStyle="danger" onTouchTap={() => {this.props.onTrainClassifierClicked()}}>Train</Button>
+          <Button onTouchTap={() => this.props.onGetReviewClicked()}>Load Review</Button>
+        </ButtonToolbar>
+
+        <ClassifierSettings classifier={classifier} />
 
         <h3>Performance</h3>
         <Col xs={12} sm={7} md={7}>
@@ -74,6 +78,9 @@ const mapDispatchToProps = (dispatch, ownProps) => {
   return {
     onGetReviewClicked: () => {
       dispatch(getReview(ownProps.params.classifier_id))
+    },
+    onTrainClassifierClicked: () => {
+      dispatch(trainClassifier(ownProps.params.classifier_id))
     }
   }
 }

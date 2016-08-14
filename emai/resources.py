@@ -202,7 +202,7 @@ class ClassifierResource(Resource):
             log.error(error)
             return Response(status=400)
 
-        return Response()
+        return Response(classifier)
 
     @staticmethod
     async def train_classifier(request):

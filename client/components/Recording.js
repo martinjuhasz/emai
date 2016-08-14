@@ -1,12 +1,25 @@
 import React, { Component, PropTypes } from 'react'
-import { Link } from 'react-router'
+import { Panel, Col, Image, ButtonGroup, Button } from 'react-bootstrap/lib'
+import { LinkContainer } from 'react-router-bootstrap'
+
 export default class Recording extends Component {
   render() {
     const { recording, path } = this.props
+    const logo_url = recording.logo || 'https://unsplash.it/300?random'
     return (
-      <div>
-        <Link to={`/${path}/${recording.id}`}>{recording.display_name}</Link>
-      </div>
+      <Panel>
+        <Col xs={2} sm={2} md={2}>
+          <Image src={logo_url} rounded responsive />
+        </Col>
+        <Col xs={10} sm={10} md={10}>
+          <h4>{recording.display_name}</h4>
+          <ButtonGroup>
+            <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
+              <Button>Show Samples</Button>
+            </LinkContainer>
+          </ButtonGroup>
+        </Col>
+      </Panel>
     )
   }
 }

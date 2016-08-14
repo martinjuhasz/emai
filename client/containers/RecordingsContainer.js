@@ -5,6 +5,7 @@ import Recording from '../components/Recording'
 const recording_list = (recordings) => {
   return (
       <div>
+        <h2>Recordings</h2>
         {recordings.map(recording =>
           <Recording
             key={recording.id}

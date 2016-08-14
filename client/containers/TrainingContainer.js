@@ -6,6 +6,7 @@ import { getClassifiers } from '../actions'
 const classifiers_list = (classifiers) => {
   return (
       <div>
+        <h2>Classifiers</h2>
         {classifiers.map(classifier =>
           <Classifier
             key={classifier.id}

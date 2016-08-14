@@ -68,6 +68,22 @@ export default {
       .then(json => callback(json))
   },
 
+  updateClassifier(classifier_id, settings, type, callback) {
+    const url = `${api_url}/classifiers/${classifier_id}`
+    return fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        type: type,
+        settings: settings
+      })
+    })
+      .then(response => callback())
+  }
+
 
 }
 

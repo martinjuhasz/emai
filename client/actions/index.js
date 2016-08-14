@@ -194,3 +194,11 @@ export function classifyReviewMessage(message, label) {
     label: label
   }
 }
+
+export function updateClassifier(classifier_id, settings, type) {
+  return dispatch => {
+    emai.updateClassifier(classifier_id, settings, type, () => {
+      console.log('updated')
+    })
+  }
+}

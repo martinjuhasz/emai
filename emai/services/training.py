@@ -28,17 +28,15 @@ class TrainingService(object):
 
     @staticmethod
     async def update_classifier(classifier, new_data):
-        training_sets = new_data['training_sets']
-        if training_sets:
-            classifier.training_sets = [ObjectId(r_id) for r_id in training_sets]
+        if 'training_sets' in new_data:
+            classifier.training_sets = [ObjectId(r_id) for r_id in new_data['training_sets']]
 
-        type = new_data['type']
-        if type and ClassifierType(type):
-            classifier.type = type
+        if 'type' in new_data and ClassifierType(new_data['type']):
+            classifier.type = new_data['type']
 
-        settings = new_data['settings']
-        if settings:
-            classifier.settings = settings
+        if 'settings' in new_data:
+            if any(setting in new_data['settings'] for setting in ('ngram_range', 'stop_words', 'idf')):
+                classifier.settings = new_data['settings']
 
         await classifier.commit()
 

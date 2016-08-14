@@ -22,7 +22,7 @@ class ClassifierResultChart extends Component {
 
   getDataForState(state) {
     const {classifier} = this.props
-    if (!classifier) {
+    if (!classifier || !classifier.performance) {
       return null
     }
 
@@ -171,6 +171,9 @@ class ClassifierResultChart extends Component {
 
   render() {
     const {classifier} = this.props
+    if(!classifier || !classifier.performance) {
+      return null
+    }
 
     return (
       <div>

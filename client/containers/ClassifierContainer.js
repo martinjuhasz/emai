@@ -4,6 +4,7 @@ import { byId, getReviews } from '../reducers/classifiers'
 import { getReview } from '../actions'
 import Review from '../components/Review'
 import ClassifierResultChart from '../components/ClassifierResultChart'
+import ClassifierSettings from '../components/ClassifierSettings'
 import { Col } from 'react-bootstrap/lib'
 
 class TrainingContainer extends Component {
@@ -20,6 +21,7 @@ class TrainingContainer extends Component {
     return (
       <div>
         <h2>{classifier.title}</h2>
+        <ClassifierSettings classifier={classifier} />
         <div onTouchTap={() => this.props.onGetReviewClicked()}>review Classifier</div>
 
 

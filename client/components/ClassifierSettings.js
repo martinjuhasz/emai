@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import { FormGroup, Radio, ControlLabel, Col, Panel, Clearfix, ButtonToolbar, Button } from 'react-bootstrap/lib'
+import { FormGroup, Radio, ControlLabel, Col, Panel, Clearfix, ButtonToolbar, Button, FormControl } from 'react-bootstrap/lib'
 import { updateClassifier } from '../actions'
 
 class ClassifierSettings extends Component {
@@ -70,8 +70,6 @@ class ClassifierSettings extends Component {
   }
 
   render() {
-    const { classifier } = this.props
-
     return (
       <div>
         <h3>Settings</h3>
@@ -134,12 +132,14 @@ class ClassifierSettings extends Component {
 
 ClassifierSettings.propTypes = {
   classifier: PropTypes.any.isRequired,
-  updateClassifier: PropTypes.func.isRequired
+  updateClassifier: PropTypes.func.isRequired,
+  recordings: PropTypes.any.isRequired
 }
 
 
-function mapStateToProps(state, ownProps) {
+function mapStateToProps(state) {
   return {
+    recordings: state.recordings.all
   }
 }
 

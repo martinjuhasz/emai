@@ -175,6 +175,12 @@ class ClassifierResultChart extends Component {
       return null
     }
 
+    const options = {
+      legend: {
+        position: 'bottom'
+      }
+    }
+
     return (
       <div>
         <ButtonToolbar className='hspace'>
@@ -186,7 +192,7 @@ class ClassifierResultChart extends Component {
           </ButtonGroup>
         </ButtonToolbar>
         <Panel>
-          <LineChart data={this.getDataForState(this.state.selected_performance)}/>
+          <LineChart data={this.getDataForState(this.state.selected_performance)} options={options}/>
         </Panel>
       </div>
     )

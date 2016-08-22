@@ -3,6 +3,7 @@ import asyncio
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
+from sklearn.svm import LinearSVC
 from sklearn import cross_validation
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -23,6 +24,21 @@ class ClassifierType(Enum):
     SupportVectorMachine = 2
     LogisticRegression = 3
 
+
+class PreProcessing(object):
+
+    stop_words = ['aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher', 'darum', 'das', 'daß', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dessen', 'deshalb', 'die', 'dies', 'dieser', 'dieses', 'doch', 'dort', 'du', 'durch', 'ein', 'eine', 'einem', 'einen', 'einer', 'eines', 'er', 'es', 'euer', 'eure', 'für', 'hatte', 'hatten', 'hattest', 'hattet', 'hier', 'hinter', 'ich', 'ihr', 'ihre', 'im', 'in', 'ist', 'ja', 'jede', 'jedem', 'jeden', 'jeder', 'jedes', 'jener', 'jenes', 'jetzt', 'kann', 'kannst', 'können', 'könnt', 'machen', 'mein', 'meine', 'mit', 'muß', 'mußt', 'musst', 'müssen', 'müßt', 'nach', 'nachdem', 'nein', 'nicht', 'nun', 'oder', 'seid', 'sein', 'seine', 'sich', 'sie', 'sind', 'soll', 'sollen', 'sollst', 'sollt', 'sonst', 'soweit', 'sowie', 'und', 'unser', 'unsere', 'unter', 'vom', 'von', 'vor', 'wann', 'warum', 'was', 'weiter', 'weitere', 'wenn', 'wer', 'werde', 'werden', 'werdet', 'weshalb', 'wie', 'wieder', 'wieso', 'wir', 'wird', 'wirst', 'wo', 'woher', 'wohin', 'zu', 'zum', 'zur', 'über', "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
+
+    @staticmethod
+    def transformation(text):
+        return text
+
+    @staticmethod
+    def max_feature_count(count_vectorizer, min_occurences, train_data):
+        vocabulary_matrix = count_vectorizer.fit_transform(train_data)
+        vocabulary_count = np.asarray(vocabulary_matrix.sum(axis=0)).ravel()
+        excluded = np.sum(i > min_occurences for i in vocabulary_count)
+        return len(vocabulary_count) - excluded
 
 class TrainingService(object):
 
@@ -60,13 +76,20 @@ class TrainingService(object):
         # configure pipeline
         ngram_range = (1, classifier.settings['ngram_range'])
         stop_words = 'english' if classifier.settings['stop_words'] else None
-        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
+        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words, preprocessor=PreProcessing.transformation)
+        feature_count = PreProcessing.max_feature_count(count_vectorizer, 2, train_data)
+        count_vectorizer.max_features = feature_count
+
         tfidf_tranformer = TfidfTransformer(use_idf=classifier.settings['idf'])
         estimator = TrainingService.get_estimator(classifier)
         pipeline = Pipeline([('vect', count_vectorizer), ('tfidf', tfidf_tranformer), ('cls', estimator)])
 
         # train estimators
         pipeline.fit(train_data, train_target)
+
+        # test
+        #vocabulary_matrix = pipeline.steps[0][1].transform(train_data)
+        #vocabulary = sorted(list(zip(pipeline.steps[0][1].get_feature_names(), np.asarray(vocabulary_matrix.sum(axis=0)).ravel().tolist())), key=lambda item: item[1], reverse=True)
 
         # test estimators
         await TrainingService.test_classifier(classifier, pipeline, test_data, test_target)
@@ -90,7 +113,7 @@ class TrainingService(object):
         sorted_confidences = np.argsort(average_confidences)
         high_confidences = sorted_confidences[-5:]
         high_messages = [messages[message_id] for message_id in high_confidences.tolist()]
-        low_confidences = sorted_confidences[0:15]
+        low_confidences = sorted_confidences[0:25]
         low_messages = [messages[message_id] for message_id in low_confidences.tolist()]
         return_messages = high_messages + low_messages
         np.random.shuffle(return_messages)
@@ -103,7 +126,7 @@ class TrainingService(object):
         if classifier_type == ClassifierType.LogisticRegression:
             return LogisticRegression(random_state=42)
         elif classifier_type == ClassifierType.SupportVectorMachine:
-            return SGDClassifier(random_state=10)
+            return LinearSVC(random_state=10)
         elif classifier_type == ClassifierType.NaiveBayes:
             return MultinomialNB()
 

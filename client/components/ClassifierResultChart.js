@@ -14,10 +14,18 @@ class ClassifierResultChart extends Component {
     }
     this.handlePerformanceStateClick = this.handlePerformanceStateClick.bind(this)
     this.getDataForState = this.getDataForState.bind(this)
+    this.isPerformanceSelected = this.isPerformanceSelected.bind(this)
   }
 
   handlePerformanceStateClick(state) {
     this.setState({selected_performance: state})
+  }
+
+  isPerformanceSelected(performance) {
+    if(!this.state) {
+      return false
+    }
+    return this.state.selected_performance === performance;
   }
 
   getDataForState(state) {
@@ -186,7 +194,7 @@ class ClassifierResultChart extends Component {
         <ButtonToolbar className='hspace'>
           <ButtonGroup>
             <Button onTouchTap={() => this.handlePerformanceStateClick('precision')}>Precision</Button>
-            <Button onTouchTap={() => this.handlePerformanceStateClick('f1')}>F1 score</Button>
+            <Button onTouchTap={() => this.handlePerformanceStateClick('f1')}>F-beta score</Button>
             <Button onTouchTap={() => this.handlePerformanceStateClick('recall')}>Recall</Button>
             <Button onTouchTap={() => this.handlePerformanceStateClick('support')}>Support</Button>
           </ButtonGroup>
@@ -194,6 +202,21 @@ class ClassifierResultChart extends Component {
         <Panel>
           <LineChart data={this.getDataForState(this.state.selected_performance)} options={options}/>
         </Panel>
+
+        {this.isPerformanceSelected('precision') && <div>
+          The <strong>precision</strong> is the ratio of true positives / (true positives + false positives). The precision is intuitively the ability of the classifier not to label as positive a sample that is negative.
+        </div>}
+        {this.isPerformanceSelected('f1') && <div>
+          The <strong>F-beta score</strong> can be interpreted as a weighted harmonic mean of the precision and recall, where an F-beta score reaches its best value at 1 and worst score at 0.
+          The F-beta score weights recall more than precision by a factor of beta. beta == 1.0 means recall and precision are equally important.
+        </div>}
+        {this.isPerformanceSelected('recall') && <div>
+          The <strong>recall</strong> is the ratio of true positives / (true positives + false negatives). The recall is intuitively the ability of the classifier to find all the positive samples.
+        </div>}
+        {this.isPerformanceSelected('support') && <div>
+          The <strong>support</strong> is the number of occurrences of each class.
+        </div>}
+
       </div>
     )
   }

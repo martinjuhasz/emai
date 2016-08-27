@@ -103,17 +103,26 @@ class Classifier(Document):
         collection_name = 'classifiers'
     title = fields.StrField(required=True)
     training_sets = fields.ListField(fields.ObjectIdField())
+    test_set = fields.ListField(fields.ObjectIdField())
+    train_set = fields.ListField(fields.ObjectIdField())
+    unlabeled_train_set = fields.ListField(fields.ObjectIdField())
     type = fields.IntegerField()
     settings = fields.DictField()
     state = BytesField(load_only=True, dump_only=True)
     performance = fields.EmbeddedField(Performance)
 
+    def has_train_set(self):
+        if self.train_set and len(self.train_set) >= 0:
+            return True
+        return False
+
+
     async def reset(self):
-        await Classifier.collection.update({'_id': self.id}, {'$unset': {'state': '', 'performance': ''}})
-        if self.state:
-            delattr(self, 'state')
-        if self.performance:
-            delattr(self, 'performance')
+        reset_fields = ['state', 'performance', 'train_set', 'unlabeled_train_set']
+        await Classifier.collection.update({'_id': self.id}, {'$unset': {field: '' for field in reset_fields}})
+        for field in reset_fields:
+            if hasattr(self, field) and getattr(self, field):
+                delattr(self, field)
 
 
 @instance.register
@@ -135,6 +144,20 @@ class Message(Document):
     created = fields.DateTimeField(required=True)
     emoticons = fields.ListField(fields.EmbeddedField(Emoticon))
     label = fields.IntField()
+
+    @staticmethod
+    async def get_random(channel_filter, label=None, amount=1):
+        label_filter = {'$exists': False} if not label else label
+        pipeline = [
+            {'$match': {
+                '$or': channel_filter,
+                'label': label_filter
+            }},
+            {'$sample': {'size': amount}}
+        ]
+        aggregated_messages = await Message.collection.aggregate(pipeline).to_list(None)
+        messages = [Message.build_from_mongo(docs) for docs in aggregated_messages]
+        return messages
 
     @staticmethod
     def find_sample(recording, interval, limit=None, samples=None):

@@ -21,42 +21,33 @@ def setup(app):
         }
     )
 
-    cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get_recordings))
-    cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create_recording))
-    cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop_recording))
+    cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get))
+    cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create))
+    cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
 
-    cors.add(app.router.add_route('PUT', '/messages', MessageResource.classify_messages))
+    cors.add(app.router.add_route('PUT', '/messages', MessageResource.classify))
 
-    cors.add(app.router.add_route('GET', '/training/{recording_id}', TrainResource.train_classifiers))
-
-    cors.add(app.router.add_route('GET', '/classifiers', ClassifierResource.get_classifiers))
-    cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create_classifier))
-    cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update_classifier))
-    cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train_classifier))
-    cors.add(app.router.add_route('GET', '/classifiers/{classifier_id}/review', ClassifierResource.review_classifier))
+    cors.add(app.router.add_route('GET', '/classifiers', ClassifierResource.get))
+    cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create))
+    cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update))
+    cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train))
+    cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/learn', ClassifierResource.learn))
+    cors.add(app.router.add_route('GET', '/classifiers/{classifier_id}/review', ClassifierResource.review))
 
 
 class Resource(object):
-    @staticmethod
-    async def create_video_stream_response(request):
-        stream = StreamResponse()
-        stream.headers['Content-Type'] = 'video/mp2t'
-        stream.headers['Cache-Control'] = 'no-cache, no-store'
-        stream.headers['Connection'] = 'keep-alive'
-        # stream.enable_chunked_encoding()
-        # await stream.prepare(request)
-        return stream
+    pass
 
 
 class RecorderResource(Resource):
     @staticmethod
-    async def get_recordings(request):
+    async def get(request):
         recordings = await Recording.find().to_list(None)
         return Response(recordings)
 
     @staticmethod
-    async def create_recording(request):
+    async def create(request):
         # check if malformed request
         body_data = await load_json(request)
         if not body_data or not 'channel' in body_data:
@@ -83,7 +74,7 @@ class RecorderResource(Resource):
             return Response(status=500)
 
     @staticmethod
-    async def stop_recording(request):
+    async def stop(request):
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
         if not recording_id:
@@ -122,7 +113,7 @@ class RecorderResource(Resource):
 class MessageResource(Resource):
 
     @staticmethod
-    async def classify_messages(request):
+    async def classify(request):
 
         # check if malformed request
         body_data = await load_json(request)
@@ -134,38 +125,15 @@ class MessageResource(Resource):
         return Response()
 
 
-class TrainResource(Resource):
-
-    @staticmethod
-    async def train_classifiers(request):
-        # check url parameters
-        recording_id = to_objectid(request.match_info['recording_id'])
-        if not recording_id:
-            return Response(status=400)
-
-        # check if recording exists
-        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
-        if not recording:
-            return Response(status=404)
-
-        test = await TrainingService.test(recording_id)
-
-        return Response({
-            'logreg': test['logreg'].get_results(),
-            'nb': test['nb'].get_results(),
-            'svm': test['svm'].get_results()
-        })
-
-
 class ClassifierResource(Resource):
 
     @staticmethod
-    async def get_classifiers(request):
+    async def get(request):
         classifiers = await Classifier.find().to_list(None)
         return Response(classifiers)
 
     @staticmethod
-    async def create_classifier(request):
+    async def create(request):
         # check if malformed request
         body_data = await load_json(request)
         if not body_data or not 'title' in body_data or not body_data['title'].strip():
@@ -182,7 +150,7 @@ class ClassifierResource(Resource):
             return Response(status=500)
 
     @staticmethod
-    async def update_classifier(request):
+    async def update(request):
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:
@@ -205,7 +173,7 @@ class ClassifierResource(Resource):
         return Response(classifier)
 
     @staticmethod
-    async def train_classifier(request):
+    async def train(request):
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:
@@ -214,12 +182,36 @@ class ClassifierResource(Resource):
         # check if recording exists
         classifier = await Classifier.find_one({'_id': classifier_id})
 
-        await TrainingService.train(classifier)
+        try:
+            await TrainingService.train(classifier)
+        except ValueError as error:
+            log.error(error)
+            return Response(status=400)
 
         return Response(classifier)
 
     @staticmethod
-    async def review_classifier(request):
+    async def learn(request):
+        # check url parameters
+        classifier_id = to_objectid(request.match_info['classifier_id'])
+        if not classifier_id:
+            return Response(status=400)
+
+        # check if recording exists
+        classifier = await Classifier.find_one({'_id': classifier_id})
+
+        try:
+            await TrainingService.learn(classifier)
+        except ValueError as error:
+            log.error(error)
+            return Response(status=400)
+
+
+
+        return Response(classifier)
+
+    @staticmethod
+    async def review(request):
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:

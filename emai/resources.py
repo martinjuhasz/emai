@@ -201,14 +201,12 @@ class ClassifierResource(Resource):
         classifier = await Classifier.find_one({'_id': classifier_id})
 
         try:
-            await TrainingService.learn(classifier)
+            messages = await TrainingService.learn(classifier)
+            content = {'messages': messages, 'classifier': classifier}
+            return Response(content)
         except ValueError as error:
             log.error(error)
             return Response(status=400)
-
-
-
-        return Response(classifier)
 
     @staticmethod
     async def review(request):

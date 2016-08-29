@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { classifyReview, saveReview, declassifyReview, classifyReviewMessage } from '../actions'
+import * as messages from '../actions/messages'
 import Sample from '../components/Sample'
 import {Col } from 'react-bootstrap/lib'
 import SampleToolbar from '../components/SampleToolbar'
@@ -22,10 +23,10 @@ class Review extends Component {
 
   handleClassifyClick(label) {
     if(this.state.selected_message) {
-       this.props.classifyReviewMessage(this.state.selected_message, label)
+       this.props.onClassifyClicked(this.state.selected_message, label)
        this.setState({selected_message: null})
     } else {
-      this.props.classifyReview(this.props.messages, label)
+      this.props.onClassifyUnlabeledClicked(this.props.messages, label)
     }
   }
 
@@ -37,8 +38,8 @@ class Review extends Component {
         <Col className='hspace'>
           <SampleToolbar
             onClassifyClicked={this.handleClassifyClick}
-            onUndoClicked={() => this.props.declassifyReview(messages)}
-            onSaveClicked={() => this.props.saveReview(classifier.id, messages)} />
+            onUndoClicked={() => this.props.onDeclassifyClicked(messages)}
+            onSaveClicked={() => this.props.onSaveClicked(classifier.id, messages)} />
         </Col>
         <Col>
           {messages &&
@@ -57,10 +58,10 @@ Review.propTypes = {
   messages: PropTypes.any,
   classifier: PropTypes.any,
   params: PropTypes.any,
-  classifyReview: PropTypes.func.isRequired,
-  saveReview: PropTypes.func.isRequired,
-  declassifyReview: PropTypes.func.isRequired,
-  classifyReviewMessage: PropTypes.func.isRequired
+  onClassifyUnlabeledClicked: PropTypes.func.isRequired,
+  onSaveClicked: PropTypes.func.isRequired,
+  onDeclassifyClicked: PropTypes.func.isRequired,
+  onClassifyClicked: PropTypes.func.isRequired
 }
 
 function mapStateToProps(state, ownProps) {
@@ -72,9 +73,9 @@ function mapStateToProps(state, ownProps) {
 export default connect(
   mapStateToProps,
   {
-    classifyReview,
-    saveReview,
-    declassifyReview,
-    classifyReviewMessage
+    onSaveClicked: messages.save,
+    onClassifyClicked: messages.classify,
+    onClassifyUnlabeledClicked: messages.classifyUnlabeled,
+    onDeclassifyClicked: messages.declassify,
   }
 )(Review)

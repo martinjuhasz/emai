@@ -4,6 +4,7 @@ import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
 import ClassifierContainer from './ClassifierContainer'
 import TrainingContainer from './TrainingContainer'
+import ReplayContainer from './ReplayContainer'
 import { Router, Route,  IndexRoute, hashHistory } from 'react-router'
 import {Grid, Row, Col, Nav, NavItem } from 'react-bootstrap/lib'
 import { LinkContainer } from 'react-router-bootstrap'
@@ -17,6 +18,7 @@ export default class App extends Component {
           <Route path='recordings' component={RecordingsContainer}>
             <Route path=':recording_id' component={RecordingContainer}>
               <Route path='samples/:interval' component={SamplesContainer} />
+              <Route path='replay/:classifier_id' component={ReplayContainer} />
             </Route>
           </Route>
 

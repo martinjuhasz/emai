@@ -83,6 +83,13 @@ export default {
     })
       .then(response => response.json())
       .then(json => callback(json))
+  },
+
+  learnClassifier(classifier_id, callback) {
+    const url = `${api_url}/classifiers/${classifier_id}/learn`
+    return fetch(url,  {method: 'POST'})
+      .then(response => response.json())
+      .then(json => callback(json))
   }
 
 

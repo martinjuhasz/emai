@@ -115,6 +115,31 @@ function receiveClassifier(classifier) {
   }
 }
 
+export function trainClassifier(classifier_id) {
+  return dispatch => {
+    emai.trainClassifier(classifier_id, classifier => {
+      dispatch(receiveClassifier(classifier))
+    })
+  }
+}
+
+export function updateClassifier(classifier_id, settings, type) {
+  return dispatch => {
+    emai.updateClassifier(classifier_id, settings, type, classifier => {
+      dispatch(receiveClassifier(classifier))
+    })
+  }
+}
+
+export function learnClassifier(classifier_id) {
+  return dispatch => {
+    emai.learnClassifier(classifier_id, payload => {
+      dispatch(receiveClassifier(payload.classifier))
+      dispatch(receiveMessages(payload.messages))
+    })
+  }
+}
+
 export function getReview(classifier_id) {
   return dispatch => {
     emai.getReview(classifier_id, reviews => {
@@ -167,13 +192,6 @@ function checkForNewReviews(dispatch, state, classifier) {
   }
 }
 
-export function trainClassifier(classifier_id) {
-  return dispatch => {
-    emai.trainClassifier(classifier_id, classifier => {
-      dispatch(receiveClassifier(classifier))
-    })
-  }
-}
 
 export function declassifyReview(messages) {
   return (dispatch, getState) => {
@@ -195,10 +213,9 @@ export function classifyReviewMessage(message, label) {
   }
 }
 
-export function updateClassifier(classifier_id, settings, type) {
-  return dispatch => {
-    emai.updateClassifier(classifier_id, settings, type, classifier => {
-      dispatch(receiveClassifier(classifier))
-    })
+function receiveMessages(messages) {
+  return {
+    type: types.RECEIVE_MESSAGES,
+    messages: messages
   }
 }

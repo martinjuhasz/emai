@@ -1,5 +1,6 @@
 from emai.persistence import Message, Recording, Performance, PerformanceResult
 import asyncio
+from time import perf_counter as pc
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
@@ -58,14 +59,16 @@ class DataSource(object):
         messages = await self.generate_review_data()
         messages_data = [message.content for message in messages]
 
-        # confidences = np.abs(estimator.decision_function(messages_data))
-        # average_confidences = np.average(confidences, axis=1)
-        # sorted_confidences = np.argsort(average_confidences)
+        confidences = np.abs(estimator.decision_function(messages_data))
+        average_confidences = np.average(confidences, axis=1)
+        sorted_confidences = np.argsort(average_confidences)
+        return messages[sorted_confidences[0]]
 
-        confidences = estimator.predict_proba(messages_data)
-        sorted_confidences = np.argsort(np.average(confidences, axis=1))
+        # confidences = estimator.predict_proba(messages_data)
+        # presorted_confidences = np.argsort(confidences)
+        # sorted_confidences = np.argsort(np.average(confidences, axis=1))
         # TODO: check if this is really correct ordered -> plot
-        return messages[sorted_confidences[-1]]
+        # return messages[sorted_confidences[-1]]
 
     async def generate_review_data(self):
         channel_filter = await self.create_channel_filter()
@@ -144,6 +147,7 @@ class Trainer(object):
     def classifier(self, value):
         self._classifier = value
         self.estimator = None
+        self.test_set = None
         if value:
             self.datasource = DataSource(value)
         else:
@@ -214,10 +218,23 @@ class Trainer(object):
     def add_for_mentoring(self, message_id):
         self.classifier.unlabeled_train_set.append(message_id)
 
+    async def check_for_mentoring(self):
+        newly_labeled = []
+        for message_id in self.classifier.unlabeled_train_set:
+            message = await Message.find_one({'id': message_id})
+            if message.label and message.label > 0:
+                newly_labeled.append(message_id)
+                self.classifier.train_set.append(message_id)
+        new_unlabeled_set = [mid for mid in self.classifier.unlabeled_train_set if mid not in newly_labeled]
+        self.classifier.unlabeled_train_set = new_unlabeled_set
+
     async def learn(self):
+        # check first if some mentoring was done or if mentoring is needed
+        await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
             return
         await self.train()
+        await self.test()
 
         # learn continuous while prelabeled data exists
         while not self.is_waiting_for_mentoring():
@@ -230,16 +247,24 @@ class Trainer(object):
 
             # update classifier with new message
             self.classifier.train_set.append(next_message.id)
-            self.train()
-            self.test()
-
+            await self.train()
+            await self.test()
 
         await self.save()
 
+    async def messages_for_mentoring(self):
+        if not self.is_waiting_for_mentoring():
+            return None
+
+        cursor = Message.find({'_id': {'$in': self.classifier.unlabeled_train_set}})
+        return await cursor.to_list(None)
+
     async def test(self):
-        data, target = self.datasource.load_test_data()
-        predicted = self.estimator.predict(data)
-        precision, recall, fscore, support = precision_recall_fscore_support(target, predicted)
+        if not self.test_set:
+            self.test_data, self.test_target = await self.datasource.load_test_data()
+
+        predicted = self.estimator.predict(self.test_data)
+        precision, recall, fscore, support = precision_recall_fscore_support(self.test_target, predicted)
 
         time = datetime.utcnow()
         if not self.classifier.performance:
@@ -293,12 +318,9 @@ class TrainingService(object):
         trainer = Trainer(classifier)
         trainer.ensure_configured()
 
-        # Classifier cannot learn since unlabeled Training Messages exists
-        if trainer.is_waiting_for_mentoring():
-            return classifier
-
         await trainer.learn()
-        return classifier
+
+        return await trainer.messages_for_mentoring()
 
 
 

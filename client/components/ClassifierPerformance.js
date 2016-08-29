@@ -1,6 +1,6 @@
 import React, {Component, PropTypes} from 'react'
 import {connect} from 'react-redux'
-import { getReviews } from '../reducers/classifiers'
+import { byId } from '../reducers/messages'
 import Review from '../components/Review'
 import { getReview } from '../actions'
 import ClassifierResultChart from '../components/ClassifierResultChart'
@@ -72,7 +72,7 @@ ClassifierPerformance.propTypes = {
 
 function mapStateToProps(state, ownProps) {
   return {
-    reviews: getReviews(state, ownProps.classifier.id)
+    reviews: byId(state, ownProps.classifier.unlabeled_train_set)
   }
 }
 

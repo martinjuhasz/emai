@@ -103,8 +103,8 @@ class Classifier(Document):
         collection_name = 'classifiers'
     title = fields.StrField(required=True)
     training_sets = fields.ListField(fields.ObjectIdField())
-    test_set = fields.ListField(fields.ObjectIdField())
-    train_set = fields.ListField(fields.ObjectIdField())
+    test_set = fields.ListField(fields.ObjectIdField(), load_only=True, dump_only=True)
+    train_set = fields.ListField(fields.ObjectIdField(), load_only=True, dump_only=True)
     unlabeled_train_set = fields.ListField(fields.ObjectIdField())
     type = fields.IntegerField()
     settings = fields.DictField()

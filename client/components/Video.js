@@ -7,6 +7,7 @@ export default class Video extends Component {
     super()
 
     this.onTimeUpdate = this.onTimeUpdate.bind(this)
+    this.lastUpdate = 0
   }
 
   videoURL(video_id) {
@@ -29,15 +30,22 @@ export default class Video extends Component {
     if(this.props.stop_time && this.props.stop_time <= this.refs.video.currentTime) {
       this.stop()
     }
+    const flooredTime = Math.floor(this.refs.video.currentTime)
+    if (this.props.onTimeUpdate && flooredTime !== this.lastUpdate) {
+      this.lastUpdate = flooredTime
+      this.props.onTimeUpdate(flooredTime)
+    }
   }
 
   render() {
-    const { video_id } = this.props
+    const { video_id, controls } = this.props
     if(!video_id) { return null }
+
+    const videoControls = {controls: controls}
 
     return (
       <ResponsiveEmbed a16by9>
-        <video ref='video' onTimeUpdate={this.onTimeUpdate}>
+        <video ref='video' onTimeUpdate={this.onTimeUpdate} {...videoControls}>
           <source src={this.videoURL(video_id)} type='video/mp4' />
         </video>
       </ResponsiveEmbed>
@@ -47,6 +55,8 @@ export default class Video extends Component {
 
 Video.propTypes = {
   video_id: PropTypes.string.isRequired,
-  stop_time: PropTypes.number.isRequired
+  stop_time: PropTypes.number,
+  onTimeUpdate: PropTypes.func,
+  controls: PropTypes.bool
 }
 

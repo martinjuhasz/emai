@@ -3,7 +3,7 @@ from aiohttp_utils import Response
 from umongo import ValidationError
 from emai import services
 from emai.datasource import TwitchAPI
-from emai.persistence import Recording, Classifier, load_json, to_objectid, get_async_file_descriptor
+from emai.persistence import Recording, Classifier, Message, load_json, to_objectid, get_async_file_descriptor
 from emai.utils import log, config
 from aiohttp.web import StreamResponse
 from emai.services.datasets import DataSetService
@@ -25,6 +25,7 @@ def setup(app):
     cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create))
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
+    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/messages/{time}', RecorderResource.messages_at_time))
 
     cors.add(app.router.add_route('PUT', '/messages', MessageResource.classify))
 
@@ -33,7 +34,6 @@ def setup(app):
     cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/learn', ClassifierResource.learn))
-    cors.add(app.router.add_route('GET', '/classifiers/{classifier_id}/review', ClassifierResource.review))
 
 
 class Resource(object):
@@ -108,6 +108,22 @@ class RecorderResource(Resource):
 
         bags = await DataSetService.get_samples(recording, interval)
         return Response(bags)
+
+    @staticmethod
+    async def messages_at_time(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        time = int(request.match_info['time'])
+        if not recording_id or not time or time <= 0:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id, 'stopped': {'$exists': True}})
+        if not recording:
+            return Response(status=404)
+
+        messages = await Message.at_time(recording, time)
+        return Response(messages)
 
 
 class MessageResource(Resource):
@@ -208,16 +224,3 @@ class ClassifierResource(Resource):
             log.error(error)
             return Response(status=400)
 
-    @staticmethod
-    async def review(request):
-        # check url parameters
-        classifier_id = to_objectid(request.match_info['classifier_id'])
-        if not classifier_id:
-            return Response(status=400)
-
-        # check if recording exists
-        classifier = await Classifier.find_one({'_id': classifier_id})
-
-        messages = await TrainingService.review(classifier)
-
-        return Response(messages)

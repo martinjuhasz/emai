@@ -6,7 +6,6 @@ import { Provider } from 'react-redux'
 import logger from 'redux-logger'
 import thunk from 'redux-thunk'
 import reducer from './reducers'
-import { getRecordings } from './actions'
 import App from './containers/App'
 import injectTapEventPlugin from 'react-tap-event-plugin';
 
@@ -19,8 +18,6 @@ const store = createStore(
   reducer,
   applyMiddleware(...middleware)
 )
-
-store.dispatch(getRecordings())
 
 render(
   <Provider store={store}>

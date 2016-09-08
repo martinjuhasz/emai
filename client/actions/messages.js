@@ -47,3 +47,16 @@ export function save(classifier, messages) {
   }
 }
 
+export function getMessagesAtTime(recording, time) {
+  return dispatch => {
+    emai.getMessagesAtTime(recording, time, messages => {
+      dispatch({
+        type: types.RECEIVE_MESSAGES,
+        messages: messages
+      })
+      //dispatch(receiveRecordings(recordings))
+    })
+  }
+}
+
+

@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import Recording from '../components/Recording'
+import { getRecordings } from '../actions/recordings'
 
 const recording_list = (recordings) => {
   return (
@@ -17,6 +18,11 @@ const recording_list = (recordings) => {
 }
 
 class RecordingsContainer extends Component {
+
+  componentDidMount() {
+    this.props.getRecordings()
+  }
+
   render() {
     const { recordings } = this.props
     return (
@@ -27,7 +33,8 @@ class RecordingsContainer extends Component {
 
 RecordingsContainer.propTypes = {
   recordings: PropTypes.any.isRequired,
-  children: PropTypes.node
+  children: PropTypes.node,
+  getRecordings: PropTypes.func.isRequired
 }
 
 function mapStateToProps(state) {
@@ -37,5 +44,6 @@ function mapStateToProps(state) {
 }
 
 export default connect(
-  mapStateToProps
+  mapStateToProps,
+  { getRecordings }
 )(RecordingsContainer)

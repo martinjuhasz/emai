@@ -90,8 +90,13 @@ export default {
     return fetch(url,  {method: 'POST'})
       .then(response => response.json())
       .then(json => callback(json))
-  }
+  },
 
+  getMessagesAtTime(recording, time, callback) {
+    return fetch(`${api_url}/recordings/${recording}/messages/${time}`)
+      .then(response => response.json())
+      .then(json => callback(json))
+  }
 
 }
 

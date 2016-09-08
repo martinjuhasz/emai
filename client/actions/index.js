@@ -78,21 +78,6 @@ function checkForNewSamples(dispatch, state, recording_id ,interval) {
   }
 }
 
-function receiveRecordings(recordings) {
-  return {
-    type: types.RECEIVE_RECORDINGS,
-    recordings: recordings
-  }
-}
-
-export function getRecordings() {
-  return dispatch => {
-    emai.getRecordings(recordings => {
-      dispatch(receiveRecordings(recordings))
-    })
-  }
-}
-
 export function getClassifiers() {
   return dispatch => {
     emai.getClassifiers(classifiers => {

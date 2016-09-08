@@ -64,13 +64,12 @@ class DataSource(object):
         sorted_confidences = np.argsort(average_confidences)
         return messages[sorted_confidences[0]]
 
-        # confidences = estimator.predict_proba(messages_data)
-        # presorted_confidences = np.argsort(confidences)
-        # sorted_confidences = np.argsort(np.average(confidences, axis=1))
-        # TODO: check if this is really correct ordered -> plot
-        # return messages[sorted_confidences[-1]]
+        #confidences = estimator.predict_proba(messages_data)
+        #sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
+        #return messages[sorted_confidences[-1]]
 
-    async def generate_review_data(self):
+
+    async def  generate_review_data(self):
         channel_filter = await self.create_channel_filter()
         id_filter = self.classifier.test_set + self.classifier.train_set + self.classifier.unlabeled_train_set
         review_cursor = Message.find({'$or': channel_filter, '_id': {'$nin': id_filter}}).limit(10000)

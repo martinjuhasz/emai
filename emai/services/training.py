@@ -4,7 +4,7 @@ from time import perf_counter as pc
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import SGDClassifier
-from sklearn.svm import LinearSVC
+from sklearn.svm import LinearSVC, SVC
 from sklearn import cross_validation
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression, SGDClassifier
@@ -18,6 +18,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from enum import Enum
 import pickle
 from datetime import datetime
+from random import shuffle
 
 
 class ClassifierType(Enum):
@@ -77,7 +78,7 @@ class DataSource(object):
         log.info('Review Data loaded: {} documents'.format(review_count))
         return await review_cursor.to_list(None)
 
-    async def generate_test_data(self):
+    async def generate_test_data(self, test_size=0.5):
         channel_filter = await self.create_channel_filter()
         all_cursor = Message.find({'$or': channel_filter})
         positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
@@ -100,9 +101,31 @@ class DataSource(object):
         data = neutrals + negatives + positives
         target = [0] * neutral_count + [1] * negative_count + [2] * positive_count
         train_data, test_data, train_target, test_target = cross_validation.train_test_split(data, target,
-                                                                                             test_size=0.5,
+                                                                                             test_size=test_size,
                                                                                              random_state=17)
         return test_data
+
+    async def generate_fixed_evaluation_data(self, limit=None):
+        channel_filter = await self.create_channel_filter()
+        positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
+        negative_cursor = Message.find({'$or': channel_filter, 'label': 2})
+        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1})
+
+        positive_count = await positive_cursor.count()
+        negative_count = await negative_cursor.count()
+        neutral_count = await neutral_cursor.count()
+
+        positives = await positive_cursor.to_list(limit)
+        negatives = await negative_cursor.to_list(limit)
+        neutrals = await neutral_cursor.to_list(limit)
+
+        shuffled = neutrals + negatives + positives
+        shuffle(shuffled)
+
+
+        data = [message.content for message in shuffled]
+        target = [message.label - 1 for message in shuffled]
+        return data, target
 
     async def create_channel_filter(self):
         future = Recording.find({'_id': {'$in': self.classifier.training_sets}})
@@ -114,19 +137,17 @@ class DataSource(object):
 
     async def load_test_data(self):
         message_cursor = Message.find({'_id': {'$in': self.classifier.test_set}})
-        data = []
-        target = []
-        async for message in message_cursor:
-            data.append(message.content)
-            target.append(message.label - 1)
-
-        return data, target
+        return await DataSource.load_data(message_cursor)
 
     async def load_train_data(self):
         message_cursor = Message.find({'_id': {'$in': self.classifier.train_set}})
+        return await DataSource.load_data(message_cursor)
+
+    @staticmethod
+    async def load_data(data_cursor):
         data = []
         target = []
-        async for message in message_cursor:
+        async for message in data_cursor:
             data.append(message.content)
             target.append(message.label - 1)
 
@@ -199,7 +220,7 @@ class Trainer(object):
         if classifier_type == ClassifierType.LogisticRegression:
             return LogisticRegression(random_state=42)
         elif classifier_type == ClassifierType.SupportVectorMachine:
-            return LinearSVC(random_state=10)
+            return SVC(kernel='linear', random_state=10)
         elif classifier_type == ClassifierType.NaiveBayes:
             return MultinomialNB()
 

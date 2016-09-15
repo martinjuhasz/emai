@@ -1,6 +1,6 @@
 import asyncio
 from emai.persistence import Classifier
-from emai.services.training import ClassifierType, DataSource, PreProcessing
+from emai.services.training import ClassifierType, DataSource, PreProcessing, Trainer
 from sklearn.learning_curve import learning_curve, _translate_train_sizes
 from sklearn.svm import SVC
 from sklearn.naive_bayes import MultinomialNB
@@ -14,7 +14,8 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
 import numpy
-
+import click
+import pickle
 from sklearn.base import is_classifier, clone
 from sklearn.cross_validation import check_cv
 from sklearn.externals.joblib import Parallel, delayed
@@ -27,95 +28,91 @@ from sklearn.utils import indexable
 evaluation_recording = ObjectId('5798ea0a7b95805f6e4dc1b2')  # Lassiz
 
 
-class ActiveLearningSplit(BaseShuffleSplit):
-    def _iter_indices(self):
-        rng = check_random_state(self.random_state)
-        for i in range(self.n_iter):
-            # random partition
-            permutation = rng.permutation(self.n)
-            ind_test = permutation[:self.n_test]
-            ind_train = permutation[self.n_test:self.n_test + self.n_train]
-            yield ind_train, ind_test
-
-    def __repr__(self):
-        return ('%s(%d, n_iter=%d, test_size=%s, '
-                'random_state=%s)' % (
-                    self.__class__.__name__,
-                    self.n,
-                    self.n_iter,
-                    str(self.test_size),
-                    self.random_state,
-                ))
-
-    def __len__(self):
-        return self.n_iter
+async def mentor_messages(messages):
+    if not messages or len(messages) <= 0:
+        return
+    click.echo('Classify these messages:')
+    click.secho('1) neutral', color='yellow')
+    click.secho('2) negative', color='red')
+    click.secho('3) positive', color='green')
+    for message in messages:
+        value = click.prompt(message.content, type=click.IntRange(1, 3))
+        message.label = value
+        await message.commit()
 
 
-def active_learning_curve(estimator, X, y, train_sizes=numpy.linspace(0.1, 1.0, 5),
-                   cv=None, scoring=None,
-                   n_jobs=1, pre_dispatch="all", verbose=0):
-
-    X, y = indexable(X, y)
-    # Make a list since we will be iterating multiple times over the folds
-    cv = list(check_cv(cv, X, y, classifier=is_classifier(estimator)))
-    scorer = check_scoring(estimator, scoring=scoring)
-
-    n_max_training_samples = len(cv[0][0])
-    # Because the lengths of folds can be significantly different, it is
-    # not guaranteed that we use all of the available training data when we
-    # use the first 'n_max_training_samples' samples.
-    train_sizes_abs = _translate_train_sizes(train_sizes,
-                                             n_max_training_samples)
-    n_unique_ticks = train_sizes_abs.shape[0]
-    if verbose > 0:
-        print("[learning_curve] Training set sizes: " + str(train_sizes_abs))
-
-    parallel = Parallel(n_jobs=n_jobs, pre_dispatch=pre_dispatch,
-                        verbose=verbose)
-
+async def active_learning_curve(trainer, iterations, folds, foldsize):
     out = []
-    for train, test in cv:
-        for n_train_samples in train_sizes_abs:
-            print(n_train_samples)
-            scores = _fit_and_score(clone(estimator), X, y, scorer, train[:n_train_samples], test, verbose, parameters=None, fit_params=None, return_train_score=True)
+    train_sizes = []
+    for iteration in range(0, iterations):
+        # setup test set for classifier
+        await trainer.classifier.reset()
+        data_source = DataSource(trainer.classifier)
+        trainer.classifier.test_set = await data_source.generate_test_data(limit=300, test_size=0.8)
+
+        for fold in range(0, folds):
+            train_size = (fold + 1) * foldsize
+            if iteration == 0:
+                train_sizes.append(train_size)
+            while len(trainer.classifier.train_set) < train_size:
+                await trainer.learn(save=False, test=False, max_learn_count=train_size)
+                click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations, fold + 1, folds, len(trainer.classifier.train_set), train_size))
+                messages = await trainer.messages_for_mentoring()
+                await mentor_messages(messages)
+            scores = await trainer.score()
             out.append(scores)
 
-    #out2 = parallel(delayed(_fit_and_score)(clone(estimator), X, y, scorer, train[:n_train_samples], test,
-    #    verbose, parameters=None, fit_params=None, return_train_score=True)
-    #    for train, test in cv for n_train_samples in train_sizes_abs)
-
-    out = numpy.array(out)[:, :2]
-    n_cv_folds = out.shape[0] // n_unique_ticks
-    out = out.reshape(n_cv_folds, n_unique_ticks, 2)
-
+    out = numpy.array(out)
+    n_cv_folds = out.shape[0] // folds
+    out = out.reshape(n_cv_folds, folds, 2)
     out = numpy.asarray(out).transpose((2, 1, 0))
 
-    return train_sizes_abs, out[0], out[1]
+    return train_sizes, out[0], out[1]
 
 
 async def evaluate_active_learning():
     # setup dummy classifier to load sets
     classifier = Classifier()
+    classifier.title = "Active Learning Evaluator"
     classifier.training_sets = [evaluation_recording]
+    classifier.type = ClassifierType.LogisticRegression.value
+    classifier.settings = {
+        'ngram_range': 1,
+        'stop_words': False,
+        'idf': False
+    }
 
     # load data
     datasource = DataSource(classifier)
     data, target = await datasource.generate_fixed_evaluation_data(limit=600)
-    cv = ActiveLearningSplit(numpy.array(data).shape[0], n_iter=50, test_size=0.8, random_state=17)
     ylim = [0.45, 0.75]
     ylim = None
 
-    # configure pipelines
-    prepro = [('vect', CountVectorizer()), ('tfidf', TfidfTransformer())]
 
     # start plotting
     figure = pyplot.figure()
-    figure.set_size_inches(20, 5)
+    figure.set_size_inches(7, 5)
 
     # Test Logistic Regression
-    estimator = LogisticRegression(random_state=42, C=2)
-    train_sizes, train_scores, test_scores = active_learning_curve(Pipeline(prepro + [('cls', estimator)]), data, target, cv=cv, n_jobs=-1, train_sizes=numpy.linspace(0.05, 1., 10))
-    plot_learning_curve(figure, [2, 2, 1], train_sizes, train_scores, test_scores, title="LogisticRegression - C=2", ylim=ylim)
+    trainer = Trainer(classifier)
+    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 10, 10, 35)
+    pickle.dump((train_sizes, train_scores, test_scores), open("al.dump", "wb"))
+    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="LogisticRegression - C=2", ylim=ylim)
+
+    figure.tight_layout()
+    print('ended')
+
+async def plot_last_active_learning():
+    ylim = [0.45, 0.75]
+    ylim = None
+
+
+    # start plotting
+    figure = pyplot.figure()
+    figure.set_size_inches(7, 5)
+
+    train_sizes, train_scores, test_scores = pickle.load(open("al.dump", "rb"))
+    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="LogisticRegression - C=2", ylim=ylim)
 
     figure.tight_layout()
     print('ended')
@@ -713,6 +710,7 @@ async def main():
     # await evaluate_classifier_params()
 
     await evaluate_active_learning()
+    # await plot_last_active_learning()
 
     pyplot.savefig('data.png')
     pyplot.show()

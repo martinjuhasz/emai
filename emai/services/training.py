@@ -19,6 +19,8 @@ from enum import Enum
 import pickle
 from datetime import datetime
 from random import shuffle
+import scipy
+import math
 
 
 class ClassifierType(Enum):
@@ -48,6 +50,16 @@ class DataSource(object):
     def __init__(self, classifier):
         self.classifier = classifier
 
+    @staticmethod
+    def entropy(data):
+        if data is None:
+            return 0
+        entropy = 0
+        for p_x in data:
+            if p_x > 0:
+                entropy += - p_x * math.log(p_x, 2)
+        return entropy
+
     async def get_sample_train_set(self, amount=3):
         channel_filter = await self.create_channel_filter()
         positive = await Message.get_random(channel_filter, 3, amount)
@@ -60,10 +72,15 @@ class DataSource(object):
         messages = await self.generate_review_data()
         messages_data = [message.content for message in messages]
 
-        confidences = np.abs(estimator.decision_function(messages_data))
-        average_confidences = np.average(confidences, axis=1)
-        sorted_confidences = np.argsort(average_confidences)
-        return messages[sorted_confidences[0]]
+        confidences = estimator.predict_proba(messages_data)
+        indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
+        sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
+        return messages[sorted_confidences[-1][0]]
+
+        #confidences = np.abs(estimator.decision_function(messages_data))
+        #average_confidences = np.average(confidences, axis=1)
+        #sorted_confidences = np.argsort(average_confidences)
+        #return messages[sorted_confidences[0]]
 
         #confidences = estimator.predict_proba(messages_data)
         #sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
@@ -78,14 +95,29 @@ class DataSource(object):
         log.info('Review Data loaded: {} documents'.format(review_count))
         return await review_cursor.to_list(None)
 
-    async def generate_test_data(self, test_size=0.5):
+    async def generate_test_data(self, test_size=0.5, limit=None):
         channel_filter = await self.create_channel_filter()
-        all_cursor = Message.find({'$or': channel_filter})
-        positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
-        negative_cursor = Message.find({'$or': channel_filter, 'label': 2})
-        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1})
 
-        all_count = await all_cursor.count()
+        # calc max count
+        all_count = await Message.find({'$or': channel_filter}).count()
+        max_count = None
+        if test_size and limit:
+            max_count = min(all_count, limit) * test_size
+        elif test_size and not limit:
+            max_count = all_count * test_size
+        elif not test_size and limit:
+            max_count = min(all_count, limit)
+
+        positive = await Message.find_random({'$or': channel_filter, 'label': 3}, amount=max_count)
+        negative = await Message.find_random({'$or': channel_filter, 'label': 2}, amount=max_count)
+        neutral = await Message.find_random({'$or': channel_filter, 'label': 1}, amount=max_count)
+        data = [message.id for message in positive + negative + neutral]
+        return data
+
+        positive_cursor = Message.find({'$or': channel_filter, 'label': 3}).limit(max_count)
+        negative_cursor = Message.find({'$or': channel_filter, 'label': 2}).limit(max_count)
+        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1}).limit(max_count)
+
         positive_count = await positive_cursor.count()
         negative_count = await negative_cursor.count()
         neutral_count = await neutral_cursor.count()
@@ -167,7 +199,8 @@ class Trainer(object):
     def classifier(self, value):
         self._classifier = value
         self.estimator = None
-        self.test_set = None
+        self.test_data = None
+        self.test_target = None
         if value:
             self.datasource = DataSource(value)
         else:
@@ -218,11 +251,11 @@ class Trainer(object):
     def choose_estimator(self):
         classifier_type = ClassifierType(self.classifier.type)
         if classifier_type == ClassifierType.LogisticRegression:
-            return LogisticRegression(random_state=42)
+            return LogisticRegression(random_state=42, C=2)
         elif classifier_type == ClassifierType.SupportVectorMachine:
-            return SVC(kernel='linear', random_state=10)
+            return SVC(kernel='linear', random_state=10, C=2)
         elif classifier_type == ClassifierType.NaiveBayes:
-            return MultinomialNB()
+            return MultinomialNB(alpha=0.5)
 
     async def save(self):
         classifier_state = pickle.dumps(self.estimator)
@@ -248,16 +281,20 @@ class Trainer(object):
         new_unlabeled_set = [mid for mid in self.classifier.unlabeled_train_set if mid not in newly_labeled]
         self.classifier.unlabeled_train_set = new_unlabeled_set
 
-    async def learn(self):
+    async def learn(self, test=True, save=True, max_learn_count=None):
         # check first if some mentoring was done or if mentoring is needed
         await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
             return
+
         await self.train()
-        await self.test()
+        if test:
+            await self.test()
 
         # learn continuous while prelabeled data exists
         while not self.is_waiting_for_mentoring():
+            if max_learn_count and len(self.classifier.train_set) > max_learn_count:
+                break
 
             # check if next message needs mentoring
             next_message = await self.datasource.least_confident_message(self.estimator)
@@ -268,9 +305,11 @@ class Trainer(object):
             # update classifier with new message
             self.classifier.train_set.append(next_message.id)
             await self.train()
-            await self.test()
+            if test:
+                await self.test()
 
-        await self.save()
+        if save:
+            await self.save()
 
     async def messages_for_mentoring(self):
         if not self.is_waiting_for_mentoring():
@@ -280,7 +319,7 @@ class Trainer(object):
         return await cursor.to_list(None)
 
     async def test(self):
-        if not self.test_set:
+        if not self.test_data or not self.test_target:
             self.test_data, self.test_target = await self.datasource.load_test_data()
 
         predicted = self.estimator.predict(self.test_data)
@@ -309,6 +348,13 @@ class Trainer(object):
         self.classifier.performance.positive.fscore.append(fscore[2].item())
         self.classifier.performance.positive.support.append(support[2].item())
 
+    async def score(self):
+        if not self.test_data or not self.test_target:
+            self.test_data, self.test_target = await self.datasource.load_test_data()
+        train_data, train_target = await self.datasource.load_train_data()
+
+        scores = [self.estimator.score(train_data, train_target), self.estimator.score(self.test_data, self.test_target)]
+        return scores
 
 
 class TrainingService(object):

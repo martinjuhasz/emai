@@ -169,6 +169,16 @@ class Message(Document):
         return await future.to_list(None)
 
     @staticmethod
+    async def find_random(query, amount=None):
+        pipeline = [{'$match': query}]
+        if amount:
+            pipeline.append({'$sample': {'size': amount}})
+
+        raw_docs = await Message.collection.aggregate(pipeline).to_list(None)
+        docs = [Message.build_from_mongo(docs) for docs in raw_docs]
+        return docs
+
+    @staticmethod
     def find_sample(recording, interval, limit=None, samples=None):
         interval_milli = interval * 1000
         pipeline = [

@@ -47,16 +47,9 @@ export function save(classifier, messages) {
   }
 }
 
-export function getMessagesAtTime(recording, time) {
-  return dispatch => {
-    emai.getMessagesAtTime(recording, time, messages => {
-      dispatch({
-        type: types.RECEIVE_MESSAGES,
-        messages: messages
-      })
-      //dispatch(receiveRecordings(recordings))
-    })
-  }
+export function getMessagesAtTime(recording, time, last_message, callback) {
+  last_message = (last_message) ? last_message.id : false
+  emai.getMessagesAtTime(recording, time, last_message, callback)
 }
 
 

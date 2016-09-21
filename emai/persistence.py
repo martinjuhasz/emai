@@ -164,11 +164,19 @@ class Message(Document):
         return messages
 
     @staticmethod
-    async def at_time(recording, until_time, from_time=None):
+    async def at_time(recording, until_time, last_message=None):
         max_datetime = recording.started + datetime.timedelta(seconds=until_time)
-        min_time = from_time if from_time else max(until_time - 30, 0)
-        min_datetime = recording.started + datetime.timedelta(seconds=min_time)
-        future = Message.find({'channel_id': str(recording.channel_id), 'created': {'$lt': max_datetime, '$gte': min_datetime}}).sort('_id', 1).limit(300)
+        channel_filter = {'channel_id': str(recording.channel_id)}
+        created_filter = {'created': {'$lt': max_datetime }}
+        id_filter = {}
+        if last_message:
+            id_filter = {'id': {'$gt': last_message}}
+        else:
+            min_datetime = recording.started + datetime.timedelta(seconds=max(until_time - 30, 0))
+            created_filter = {'created': {'$lt': max_datetime, '$gte': min_datetime}}
+        filters = {**channel_filter, **created_filter, **id_filter}
+
+        future = Message.find(filters).sort('_id', 1).limit(300)
         return await future.to_list(None)
 
     @staticmethod

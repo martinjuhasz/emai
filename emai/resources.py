@@ -122,7 +122,14 @@ class RecorderResource(Resource):
         if not recording:
             return Response(status=404)
 
-        messages = await Message.at_time(recording, time)
+        # check other get parameters
+        last_message = None
+        if 'last_message' in request.GET:
+            last_message = to_objectid(request.GET['last_message'])
+
+        messages = await Message.at_time(recording, time, last_message)
+        if not messages or len(messages) <= 0:
+            return Response(status=204)
         return Response(messages)
 
 

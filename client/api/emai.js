@@ -92,9 +92,12 @@ export default {
       .then(json => callback(json))
   },
 
-  getMessagesAtTime(recording, time, callback) {
-    return fetch(`${api_url}/recordings/${recording}/messages/${time}`)
-      .then(response => response.json())
+  getMessagesAtTime(recording, time, last_message, callback) {
+    return fetch(`${api_url}/recordings/${recording}/messages/${time}?last_message=${last_message}`)
+      .then(response => {
+        if (response.status === 204) return []
+        return response.json()
+      })
       .then(json => callback(json))
   }
 

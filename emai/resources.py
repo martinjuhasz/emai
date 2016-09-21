@@ -114,7 +114,7 @@ class RecorderResource(Resource):
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
         time = int(request.match_info['time'])
-        if not recording_id or not time or time <= 0:
+        if not recording_id or not time or time < 0:
             return Response(status=400)
 
         # check if recording exists

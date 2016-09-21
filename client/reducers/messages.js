@@ -32,11 +32,13 @@ export function byId(state, ids) {
 
 export function byRecording(state, recording_id) {
   const messages = []
+  /*
   for (const key of Object.keys(state.messages)) {
-    if (messages[key].channel_id ===) {
+    if (messages[key].channel_id === ) {
 
     }
   }
+  */
   return messages
 }
 

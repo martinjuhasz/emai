@@ -148,12 +148,15 @@ class Message(Document):
 
     @staticmethod
     async def get_random(channel_filter, label=None, amount=1):
-        label_filter = {'$exists': False} if not label else label
+        if label is None:
+            label_filter = {}
+        elif label is False:
+            label_filter = {'label': {'$exists': False}}
+        else:
+            label_filter = {'label': label}
+
         pipeline = [
-            {'$match': {
-                '$or': channel_filter,
-                'label': label_filter
-            }},
+            {'$match': {**{'$or': channel_filter}, **label_filter}},
             {'$sample': {'size': amount}}
         ]
         aggregated_messages = await Message.collection.aggregate(pipeline).to_list(None)

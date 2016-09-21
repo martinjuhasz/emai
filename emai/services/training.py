@@ -21,6 +21,7 @@ from datetime import datetime
 from random import shuffle
 import scipy
 import math
+from random import randint
 
 
 class ClassifierType(Enum):
@@ -68,13 +69,20 @@ class DataSource(object):
         ids = [message.id for message in positive + negative + neutral]
         return ids
 
-    async def least_confident_message(self, estimator):
-        messages = await self.generate_review_data()
+    async def random_message(self, interactive=False):
+        channel_filter = await self.create_channel_filter()
+        label = randint(1, 3) if not interactive else None
+        messages = await Message.get_random(channel_filter, label)
+        return messages[0]
+
+    async def least_confident_message(self, estimator, interactive=False):
+        messages = await self.generate_review_data(include_unlabeled=interactive)
         messages_data = [message.content for message in messages]
 
         confidences = estimator.predict_proba(messages_data)
         indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
+        sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
+        # sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
         return messages[sorted_confidences[-1][0]]
 
         #confidences = np.abs(estimator.decision_function(messages_data))
@@ -82,15 +90,22 @@ class DataSource(object):
         #sorted_confidences = np.argsort(average_confidences)
         #return messages[sorted_confidences[0]]
 
+        #confidences = np.abs(estimator.decision_function(messages_data))
+        #indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
+        #sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
+        #return messages[sorted_confidences[-1][0]]
+
         #confidences = estimator.predict_proba(messages_data)
         #sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
         #return messages[sorted_confidences[-1]]
 
 
-    async def  generate_review_data(self):
+    async def  generate_review_data(self, include_unlabeled=False):
         channel_filter = await self.create_channel_filter()
         id_filter = self.classifier.test_set + self.classifier.train_set + self.classifier.unlabeled_train_set
-        review_cursor = Message.find({'$or': channel_filter, '_id': {'$nin': id_filter}}).limit(10000)
+        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
+        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
+        review_cursor = Message.find(complete_filter).limit(10000)
         review_count = await review_cursor.count()
         log.info('Review Data loaded: {} documents'.format(review_count))
         return await review_cursor.to_list(None)
@@ -239,7 +254,7 @@ class Trainer(object):
         # configure pipeline
         ngram_range = (1, self.classifier.settings['ngram_range'])
         stop_words = PreProcessing.stop_words if self.classifier.settings['stop_words'] else None
-        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words, preprocessor=PreProcessing.transformation)
+        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
         tfidf_tranformer = TfidfTransformer(use_idf=self.classifier.settings['idf'])
         estimator = self.choose_estimator()
         pipeline = Pipeline([('vect', count_vectorizer), ('tfidf', tfidf_tranformer), ('cls', estimator)])
@@ -281,7 +296,7 @@ class Trainer(object):
         new_unlabeled_set = [mid for mid in self.classifier.unlabeled_train_set if mid not in newly_labeled]
         self.classifier.unlabeled_train_set = new_unlabeled_set
 
-    async def learn(self, test=True, save=True, max_learn_count=None):
+    async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, interactive=True):
         # check first if some mentoring was done or if mentoring is needed
         await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
@@ -292,17 +307,23 @@ class Trainer(object):
             await self.test()
 
         # learn continuous while prelabeled data exists
+        randomize_counter = 1
         while not self.is_waiting_for_mentoring():
             if max_learn_count and len(self.classifier.train_set) > max_learn_count:
                 break
 
             # check if next message needs mentoring
-            next_message = await self.datasource.least_confident_message(self.estimator)
+            if not randomize or (randomize and randomize_counter % randomize == 0):
+                next_message = await self.datasource.least_confident_message(self.estimator, interactive=interactive)
+            else:
+                next_message = await self.datasource.random_message(interactive=interactive)
+
             if not next_message.label:
                 self.add_for_mentoring(next_message.id)
                 continue
 
             # update classifier with new message
+            randomize_counter += 1
             self.classifier.train_set.append(next_message.id)
             await self.train()
             if test:

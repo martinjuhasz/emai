@@ -41,33 +41,32 @@ async def mentor_messages(messages):
         await message.commit()
 
 
-async def active_learning_curve(trainer, iterations, folds, foldsize):
+async def active_learning_curve(trainer, iterations, train_sizes, max_size):
     out = []
-    train_sizes = []
     for iteration in range(0, iterations):
         # setup test set for classifier
         await trainer.classifier.reset()
         data_source = DataSource(trainer.classifier)
         trainer.classifier.test_set = await data_source.generate_test_data(limit=300, test_size=0.8)
 
-        for fold in range(0, folds):
-            train_size = (fold + 1) * foldsize
-            if iteration == 0:
-                train_sizes.append(train_size)
+        train_sizes_abs = _translate_train_sizes(train_sizes, max_size)
+        n_unique_ticks = train_sizes_abs.shape[0]
+
+        for train_size in train_sizes_abs:
             while len(trainer.classifier.train_set) < train_size:
-                await trainer.learn(save=False, test=False, max_learn_count=train_size)
-                click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations, fold + 1, folds, len(trainer.classifier.train_set), train_size))
+                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=999999, interactive=False)
+                click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations, train_size, n_unique_ticks, len(trainer.classifier.train_set), train_size))
                 messages = await trainer.messages_for_mentoring()
                 await mentor_messages(messages)
             scores = await trainer.score()
             out.append(scores)
 
     out = numpy.array(out)
-    n_cv_folds = out.shape[0] // folds
-    out = out.reshape(n_cv_folds, folds, 2)
+    n_cv_folds = out.shape[0] // n_unique_ticks
+    out = out.reshape(n_cv_folds, n_unique_ticks, 2)
     out = numpy.asarray(out).transpose((2, 1, 0))
 
-    return train_sizes, out[0], out[1]
+    return train_sizes_abs, out[0], out[1]
 
 
 async def evaluate_active_learning():
@@ -83,10 +82,8 @@ async def evaluate_active_learning():
     }
 
     # load data
-    datasource = DataSource(classifier)
-    data, target = await datasource.generate_fixed_evaluation_data(limit=600)
-    ylim = [0.45, 0.75]
-    ylim = None
+    ylim = [0.3, 1.0]
+    #ylim = None
 
 
     # start plotting
@@ -95,17 +92,15 @@ async def evaluate_active_learning():
 
     # Test Logistic Regression
     trainer = Trainer(classifier)
-    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 10, 10, 35)
+    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 20, numpy.linspace(0.05, 1., 10), 369)
     pickle.dump((train_sizes, train_scores, test_scores), open("al.dump", "wb"))
-    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="LogisticRegression - C=2", ylim=ylim)
+    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="AL random - LogisticRegression - C=2", ylim=ylim)
 
     figure.tight_layout()
     print('ended')
 
 async def plot_last_active_learning():
-    ylim = [0.45, 0.75]
-    ylim = None
-
+    ylim = [0.3, 1.0]
 
     # start plotting
     figure = pyplot.figure()
@@ -250,6 +245,34 @@ async def evaluate_preprocessing_idf():
     pipeline_woidf = Pipeline(pp_woidf + [('cls', estimator)])
     plot_preprocessing(figure, [1, 3, 3], [pipeline_default, pipeline_woidf], ["idf = true", "idf = false"], ["g", "r"],
                        data, target, cv, title="Naive Bayes", ylim=ylim)
+
+
+    figure.tight_layout()
+    print('ended')
+
+
+async def evaluate_logreg_classifier():
+    # setup dummy classifier to load sets
+    classifier = Classifier()
+    classifier.training_sets = [evaluation_recording]
+
+    # load data
+    datasource = DataSource(classifier)
+    data, target = await datasource.generate_fixed_evaluation_data(limit=600)
+    cv = ShuffleSplit(numpy.array(data).shape[0], n_iter=20, test_size=0.8, random_state=17)
+    ylim = [0.3, 1.0]
+
+    # configure pipelines
+    prepro = [('vect', CountVectorizer()), ('tfidf', TfidfTransformer())]
+
+    # start plotting
+    figure = pyplot.figure()
+    figure.set_size_inches(7, 5)
+
+    # Test Logistic Regression
+    # Test Preprocessing
+    estimator = LogisticRegression(random_state=42, C=2)
+    train_and_plot(figure, [1, 1, 1], Pipeline(prepro + [('cls', estimator)]), data, target, "Default - Logistic Regression - C=2", cv, ylim=ylim)
 
 
     figure.tight_layout()
@@ -694,6 +717,7 @@ async def main():
     # await evaluate_preprocessing_ngram()
     # await evaluate_preprocessing_idf()
 
+    # await evaluate_logreg_classifier()
     # await evaluate_logreg_classifier_param_c()
     # await  evaluate_logreg_classifier_param_tol()
     # await evaluate_logreg_classifier_param_dual()
@@ -709,11 +733,19 @@ async def main():
 
     # await evaluate_classifier_params()
 
-    await evaluate_active_learning()
+    # await evaluate_active_learning()
     # await plot_last_active_learning()
 
-    pyplot.savefig('data.png')
-    pyplot.show()
+    # pyplot.savefig('data.png')
+    # pyplot.show()
+    # pyplot.close()
+
+    for i in range(0, 10):
+        # await evaluate_logreg_classifier()
+        await evaluate_active_learning()
+        pyplot.savefig('data-{}.png'.format(i))
+        pyplot.show()
+        pyplot.clf()
     pyplot.close()
 
 if __name__ == "__main__":

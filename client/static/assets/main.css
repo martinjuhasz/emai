@@ -9,3 +9,21 @@ body {
 .emoticon {
 	margin: 0 3px;
 }
+
+.prediction-label {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 10px;
+}
+
+.prediction-label.warning {
+  background-color: #8a6d3b;
+}
+.prediction-label.danger {
+  background-color: #a94442;
+}
+.prediction-label.success {
+  background-color: #3c763d;
+}

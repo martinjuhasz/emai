@@ -10,18 +10,31 @@ class MessageGroupItem extends Component {
       return 'info'
     }
     if ('label' in message) {
-      switch (message.label) {
-        case 1:
-          return 'warning'
-        case 2:
-          return 'danger'
-        case 3:
-          return 'success'
-        default:
-          return null
-      }
+      return this.getStyle(message.label)
     }
     return null
+  }
+
+  getStyle(label) {
+    switch (label) {
+      case 1:
+        return 'warning'
+      case 2:
+        return 'danger'
+      case 3:
+        return 'success'
+      default:
+        return null
+    }
+  }
+
+  renderPredictedLabel(message) {
+    if(!message.predicted_label) { return null }
+    const label = this.getStyle(message.predicted_label)
+    const style = `prediction-label ${label}`
+    return (
+      <div className={style}></div>
+    )
   }
 
   render() {
@@ -29,6 +42,7 @@ class MessageGroupItem extends Component {
     const style = this.getListStyle(message, selected_message)
     return (
       <ListGroupItem bsStyle={style} onTouchTap={this.props.onTouchTap}>
+        {this.renderPredictedLabel(message)}
         {message.content}
         {message.emoticons.map((emoticon) => <Emoticon key={emoticon.identifier} emoticon={emoticon}/>)}
       </ListGroupItem>

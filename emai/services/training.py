@@ -277,6 +277,10 @@ class Trainer(object):
         self.classifier.state = classifier_state
         await self.classifier.commit()
 
+    def load(self):
+        if self.classifier.state and not self.estimator:
+            self.estimator = pickle.loads(self.classifier.state)
+
     def is_waiting_for_mentoring(self):
         # cannot learn since next messages need to be labeled first
         if self.classifier.unlabeled_train_set and len(self.classifier.unlabeled_train_set) >= 0:
@@ -408,6 +412,21 @@ class TrainingService(object):
         await trainer.learn()
 
         return await trainer.messages_for_mentoring()
+
+    @staticmethod
+    async def classify_messages(classifier, messages):
+        trainer = Trainer(classifier)
+        trainer.ensure_configured()
+        trainer.load()
+
+        message_contents = [message.content for message in messages]
+        predictions = trainer.estimator.predict(message_contents)
+        for count, message in enumerate(messages):
+            message.predicted_label = predictions[count] + 1
+
+
+
+
 
 
 

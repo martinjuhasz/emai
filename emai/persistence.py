@@ -145,6 +145,7 @@ class Message(Document):
     created = fields.DateTimeField(required=True)
     emoticons = fields.ListField(fields.EmbeddedField(Emoticon))
     label = fields.IntField()
+    predicted_label = fields.IntField()
 
     @staticmethod
     async def get_random(channel_filter, label=None, amount=1):

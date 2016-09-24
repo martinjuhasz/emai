@@ -47,9 +47,9 @@ export function save(classifier, messages) {
   }
 }
 
-export function getMessagesAtTime(recording, time, last_message, callback) {
+export function getMessagesAtTime(recording, time, last_message, classifier, callback) {
   last_message = (last_message) ? last_message.id : false
-  emai.getMessagesAtTime(recording, time, last_message, callback)
+  emai.getMessagesAtTime(recording, time, last_message, classifier, callback)
 }
 
 

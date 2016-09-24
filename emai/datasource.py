@@ -47,6 +47,8 @@ class StreamClient(object):
         self._livestreamer = Livestreamer()
         self._livestreamer.set_loglevel('info')
         self._livestreamer.set_logoutput(output_stream)
+        # TODO: Check oauth login instead https://www.reddit.com/r/Twitch/comments/52sye3/livestreamer_help_please_help/d7n0j36
+        self._livestreamer.set_option('http-headers', 'Client-ID=jzkbprff40iqj646a697cyrvl0zt2m6')
 
     def get_stream(self, channel, quality):
         try:

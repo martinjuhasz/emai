@@ -122,7 +122,6 @@ class RecorderResource(Resource):
         if not recording:
             return Response(status=404)
 
-        # check other get parameters
         last_message = None
         if 'last_message' in request.GET:
             last_message = to_objectid(request.GET['last_message'])
@@ -130,6 +129,13 @@ class RecorderResource(Resource):
         messages = await Message.at_time(recording, time, last_message)
         if not messages or len(messages) <= 0:
             return Response(status=204)
+
+        # classify messages if wanted
+        if 'classifier' in request.GET:
+            classifier_id = to_objectid(request.GET['classifier'])
+            classifier = await Classifier.find_one({'_id': classifier_id})
+            await TrainingService.classify_messages(classifier, messages)
+
         return Response(messages)
 
 

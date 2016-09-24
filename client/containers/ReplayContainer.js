@@ -19,16 +19,22 @@ class ReplayContainer extends Component {
       messages: []
     }
     this.videoTimeUpdated = this.videoTimeUpdated.bind(this)
+    this.videoSeeked = this.videoSeeked.bind(this)
   }
 
   videoTimeUpdated(time) {
     if (time % 2 === 0) {
       const last_message = last(this.state.messages)
-      getMessagesAtTime(this.props.recording.id, time + 2, last_message, messages => {
+      const classifier = this.props.params.classifier_id
+      getMessagesAtTime(this.props.recording.id, time + 2, last_message, classifier, messages => {
         this.setState({ messages: [...this.state.messages, ...messages] })
       })
     }
     this.setState({video_time: time})
+  }
+
+  videoSeeked() {
+    this.setState({messages: []})
   }
 
   render() {
@@ -38,7 +44,7 @@ class ReplayContainer extends Component {
     return (
       <div>
             <Col xs={12} sm={7} md={7}>
-              <Video video_id={recording.video_id} ref='video' onTimeUpdate={this.videoTimeUpdated} controls={true}/>
+              <Video video_id={recording.video_id} ref='video' onTimeUpdate={this.videoTimeUpdated} onSeeked={this.videoSeeked} controls={true}/>
             </Col>
             <Col xs={12} sm={5} md={5}>
               <Col>

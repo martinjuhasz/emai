@@ -1,7 +1,8 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFS
 from bson import json_util
 import gridfs
-from umongo import Instance, Document, EmbeddedDocument, fields, Schema
+from umongo import Instance, Document, EmbeddedDocument, fields, Schema, BaseSchema
+from marshmallow import fields as marshmallow_fields
 from umongo.abstract import BaseField
 import marshmallow
 from bson import ObjectId
@@ -28,6 +29,9 @@ def render_json(request, data):
     json_string = dumps(data)
     return json_string.encode('utf-8')
 
+
+class MethodField(BaseField, marshmallow_fields.Method):
+    pass
 
 async def load_json(request):
     text = await request.text()
@@ -258,6 +262,18 @@ class Recording(Document):
     video_banner = fields.StrField()
     background_color = fields.StrField()
 
+    async def get_stats(self):
+        message_filter = {'channel_id': str(self.channel_id), 'created': {'$gte': self.started, '$lt': self.stopped}}
+        total_messages = await Message.find(message_filter).count()
+        positive_messages = await Message.find({**message_filter, **{'label': 3}}).count()
+        negative_messages = await Message.find({**message_filter, **{'label': 2}}).count()
+        neutral_messages = await Message.find({**message_filter, **{'label': 1}}).count()
+        return {
+            'total_messages': total_messages,
+            'positive_messages': positive_messages,
+            'negative_messages': negative_messages,
+            'neutral_messages': neutral_messages
+        }
 
 class EmoticonSchema(Schema):
     identifier = fields.StrField(required=True)

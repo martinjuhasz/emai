@@ -24,6 +24,7 @@ def setup(app):
     cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get))
     cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create))
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
+    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/stats', RecorderResource.stats))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/messages/{time}', RecorderResource.messages_at_time))
 
@@ -138,6 +139,21 @@ class RecorderResource(Resource):
 
         return Response(messages)
 
+    @staticmethod
+    async def stats(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        if not recording_id:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id})
+        if not recording:
+            return Response(status=404)
+
+        stats = await recording.get_stats()
+        return Response(stats)
+
 
 class MessageResource(Resource):
 
@@ -211,8 +227,12 @@ class ClassifierResource(Resource):
         # check if recording exists
         classifier = await Classifier.find_one({'_id': classifier_id})
 
+        train_count = 350
+        if 'train_count' in request.GET:
+            train_count = int(request.GET['train_count'])
+
         try:
-            await TrainingService.train(classifier)
+            await TrainingService.train(classifier, train_count=train_count)
         except ValueError as error:
             log.error(error)
             return Response(status=400)

@@ -22,13 +22,16 @@ from random import shuffle
 import scipy
 import math
 from random import randint
-
+import re
 
 class ClassifierType(Enum):
     NaiveBayes = 1
     SupportVectorMachine = 2
     LogisticRegression = 3
 
+class LearnType(Enum):
+    LeastConfident = 1
+    MostInformative = 2
 
 class PreProcessing(object):
 
@@ -50,6 +53,7 @@ class DataSource(object):
 
     def __init__(self, classifier):
         self.classifier = classifier
+        self.informative_stack = None
 
     @staticmethod
     def entropy(data):
@@ -61,7 +65,8 @@ class DataSource(object):
                 entropy += - p_x * math.log(p_x, 2)
         return entropy
 
-    async def get_sample_train_set(self, amount=3):
+    async def get_sample_train_set(self, amount=9):
+        amount = math.ceil(amount/3)
         channel_filter = await self.create_channel_filter()
         positive = await Message.get_random(channel_filter, 3, amount)
         negative = await Message.get_random(channel_filter, 2, amount)
@@ -75,14 +80,47 @@ class DataSource(object):
         messages = await Message.get_random(channel_filter, label)
         return messages[0]
 
+    async def generate_informative_messages(self, interactive=False):
+        # load vocabulary data
+        vocabulary_cursor = await self.generate_vocabulary_data(include_unlabeled=interactive)
+        vocabulary_data, vocabulary_target = await self.load_data(vocabulary_cursor)
+
+        # setup count vectorizer
+        ngram_range = (1, self.classifier.settings['ngram_range'])
+        stop_words = PreProcessing.stop_words if self.classifier.settings['stop_words'] else None
+        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
+
+        # transform to sorted vocabulary
+        vocabulary_matrix = count_vectorizer.fit_transform(vocabulary_data)
+        vocabulary = sorted(
+            list(zip(count_vectorizer.get_feature_names(), np.asarray(vocabulary_matrix.sum(axis=0)).ravel().tolist())),
+            key=lambda item: item[1], reverse=True)
+
+        # search for messages that contain 1/3 top vocabulary
+        top_searches = [re.compile(token, re.I) for token, token_count in vocabulary[:10]]
+        channel_filter = await self.create_channel_filter()
+        label_filter = {} if interactive else {'label': {'$exists': True}}
+        message_cursor = Message.find({**{'$or': channel_filter, 'content': {'$in': top_searches}}, **label_filter})
+        self.informative_stack = message_cursor
+
+    async def most_informative(self, interactive=False):
+        if not self.informative_stack:
+            await self.generate_informative_messages(interactive=interactive)
+
+        if await self.informative_stack.fetch_next:
+            msg = self.informative_stack.next_object()
+            return msg
+        else:
+            return None
+
     async def least_confident_message(self, estimator, interactive=False):
         messages = await self.generate_review_data(include_unlabeled=interactive)
         messages_data = [message.content for message in messages]
 
         confidences = estimator.predict_proba(messages_data)
         indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
-        # sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
+        #sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
+        sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
         return messages[sorted_confidences[-1][0]]
 
         #confidences = np.abs(estimator.decision_function(messages_data))
@@ -100,7 +138,14 @@ class DataSource(object):
         #return messages[sorted_confidences[-1]]
 
 
-    async def  generate_review_data(self, include_unlabeled=False):
+    async def generate_vocabulary_data(self , include_unlabeled=False):
+        channel_filter = await self.create_channel_filter()
+        id_filter = self.classifier.test_set
+        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
+        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
+        return Message.find(complete_filter)
+
+    async def generate_review_data(self, include_unlabeled=False):
         channel_filter = await self.create_channel_filter()
         id_filter = self.classifier.test_set + self.classifier.train_set + self.classifier.unlabeled_train_set
         label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
@@ -261,6 +306,7 @@ class Trainer(object):
 
         # train estimators
         pipeline.fit(train_data, train_target)
+
         self.estimator = pipeline
 
     def choose_estimator(self):
@@ -300,7 +346,19 @@ class Trainer(object):
         new_unlabeled_set = [mid for mid in self.classifier.unlabeled_train_set if mid not in newly_labeled]
         self.classifier.unlabeled_train_set = new_unlabeled_set
 
-    async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, interactive=True):
+    async def train_until(self, train_count):
+        current_train_count = len(self.classifier.train_set)
+        if train_count <= current_train_count:
+            return
+
+        add_train_set = await self.datasource.get_sample_train_set(amount=train_count - current_train_count)
+        self.classifier.train_set.extend(add_train_set)
+
+        await self.train()
+        await self.test()
+        await self.save()
+
+    async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, randomize_step=False, interactive=True, learn_type=LearnType.LeastConfident):
         # check first if some mentoring was done or if mentoring is needed
         await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
@@ -317,10 +375,17 @@ class Trainer(object):
                 break
 
             # check if next message needs mentoring
-            if not randomize or (randomize and randomize_counter % randomize == 0):
-                next_message = await self.datasource.least_confident_message(self.estimator, interactive=interactive)
+            if not randomize or (randomize and randomize_step and randomize_counter % randomize_step == 0):
+                if learn_type == LearnType.LeastConfident:
+                    next_message = await self.datasource.least_confident_message(self.estimator, interactive=interactive)
+                else:
+                    next_message = await self.datasource.most_informative(interactive=interactive)
             else:
                 next_message = await self.datasource.random_message(interactive=interactive)
+
+            # break if no messages are left to train
+            if not next_message:
+                break
 
             if not next_message.label:
                 self.add_for_mentoring(next_message.id)
@@ -403,6 +468,12 @@ class TrainingService(object):
         await classifier.commit()
         await classifier.reset()
 
+    @staticmethod
+    async def train(classifier, train_count=350):
+        trainer = Trainer(classifier)
+        trainer.ensure_configured()
+
+        await trainer.train_until(train_count)
 
     @staticmethod
     async def learn(classifier):

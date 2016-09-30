@@ -6,9 +6,10 @@ import { getMessagesAtTime } from '../actions/messages'
 import {Col } from 'react-bootstrap/lib'
 import SampleToolbar from '../components/SampleToolbar'
 import Video from '../components/Video'
-import {ListGroup } from 'react-bootstrap/lib'
+import {ListGroup, ButtonToolbar, ButtonGroup, DropdownButton, MenuItem, Panel } from 'react-bootstrap/lib'
 import MessageGroupItem from '../components/MessageGroupItem'
 import { last, takeRight } from 'lodash/array'
+import { getClassifiers } from '../actions'
 
 class ReplayContainer extends Component {
 
@@ -16,16 +17,22 @@ class ReplayContainer extends Component {
     super()
     this.state = {
       video_time: null,
-      messages: []
+      messages: [],
+      selected_classifier: null
     }
     this.videoTimeUpdated = this.videoTimeUpdated.bind(this)
     this.videoSeeked = this.videoSeeked.bind(this)
+    this.classifierSelected = this.classifierSelected.bind(this)
+  }
+
+  componentDidMount() {
+    this.props.getClassifiers()
   }
 
   videoTimeUpdated(time) {
     if (time % 2 === 0) {
       const last_message = last(this.state.messages)
-      const classifier = this.props.params.classifier_id
+      const classifier = (this.state.selected_classifier) ? this.state.selected_classifier.id : false
       getMessagesAtTime(this.props.recording.id, time + 2, last_message, classifier, messages => {
         this.setState({ messages: [...this.state.messages, ...messages] })
       })
@@ -37,31 +44,53 @@ class ReplayContainer extends Component {
     this.setState({messages: []})
   }
 
+  classifierSelected(classifier) {
+    if(!classifier) {
+      this.setState({selected_classifier: null})
+      return
+    }
+    this.setState({selected_classifier: classifier})
+  }
+
   render() {
-    const { recording } = this.props
+    const { recording, classifiers } = this.props
     const { messages } = this.state
 
     return (
-      <div>
-            <Col xs={12} sm={7} md={7}>
-              <Video video_id={recording.video_id} ref='video' onTimeUpdate={this.videoTimeUpdated} onSeeked={this.videoSeeked} controls={true}/>
-            </Col>
-            <Col xs={12} sm={5} md={5}>
-              <Col>
-                <ListGroup>
-                  {messages && messages.length > 0 && takeRight(messages, 20).map(message => {
-                    const message_id = message._id || message.id
-                    return (
-                      <MessageGroupItem
-                        onTouchTap={() => {}}
-                        key={message_id}
-                        message={message} />
-                    )
-                  })}
-                </ListGroup>
-              </Col>
-            </Col>
-      </div>
+      <Col>
+        <Col xs={12} sm={7} md={7} className='lhspace'>
+          <Panel>
+            <Video video_id={recording.video_id} ref='video' onTimeUpdate={this.videoTimeUpdated} onSeeked={this.videoSeeked} controls={true} autoplay={true}/>
+          </Panel>
+        </Col>
+        <Col xs={12} sm={5} md={5}>
+          <Col className='hspace'>
+            <ButtonToolbar>
+              <ButtonGroup>
+                <DropdownButton id='replay_classifier_dropdown' title={(this.state.selected_classifier && this.state.selected_classifier.title) || 'Klassifikatoren'} onSelect={this.classifierSelected}>
+                  <MenuItem eventKey={false}>ohne</MenuItem>
+                  {classifiers.map(classifier =>
+                    <MenuItem key={classifier.id} eventKey={classifier}>{classifier.title}</MenuItem>
+                  )}
+                </DropdownButton>
+              </ButtonGroup>
+            </ButtonToolbar>
+          </Col>
+          <Col>
+            <ListGroup>
+              {messages && messages.length > 0 && takeRight(messages, 20).map(message => {
+                const message_id = message._id || message.id
+                return (
+                  <MessageGroupItem
+                    onTouchTap={() => {}}
+                    key={message_id}
+                    message={message} />
+                )
+              })}
+            </ListGroup>
+          </Col>
+        </Col>
+      </Col>
     )
   }
 }
@@ -69,17 +98,21 @@ class ReplayContainer extends Component {
 ReplayContainer.propTypes = {
   messages: PropTypes.any,
   recording: PropTypes.any,
-  params: PropTypes.any
+  classifiers: PropTypes.any,
+  params: PropTypes.any,
+  getClassifiers: PropTypes.func.isRequired
 }
 
 function mapStateToProps(state, ownProps) {
   return {
-    recording: recordingsReducer(state, ownProps.params.recording_id)
+    recording: recordingsReducer(state, ownProps.params.recording_id),
+    classifiers: state.classifiers.all
   }
 }
 
 export default connect(
   mapStateToProps,
   {
+    getClassifiers
   }
 )(ReplayContainer)

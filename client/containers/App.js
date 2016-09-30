@@ -18,7 +18,7 @@ export default class App extends Component {
           <Route path='recordings' component={RecordingsContainer}>
             <Route path=':recording_id' component={RecordingContainer}>
               <Route path='samples/:interval' component={SamplesContainer} />
-              <Route path='replay/:classifier_id' component={ReplayContainer} />
+              <Route path='replay' component={ReplayContainer} />
             </Route>
           </Route>
 

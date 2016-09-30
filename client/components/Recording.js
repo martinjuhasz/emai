@@ -1,5 +1,5 @@
 import React, { Component, PropTypes } from 'react'
-import { Panel, Col, Image, ButtonGroup, Button } from 'react-bootstrap/lib'
+import { Panel, Col, Image, ButtonGroup, Button, Glyphicon, ButtonToolbar } from 'react-bootstrap/lib'
 import { LinkContainer } from 'react-router-bootstrap'
 
 export default class Recording extends Component {
@@ -13,11 +13,18 @@ export default class Recording extends Component {
         </Col>
         <Col xs={10} sm={10} md={10}>
           <h4>{recording.display_name}</h4>
-          <ButtonGroup>
-            <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
-              <Button>Show Samples</Button>
-            </LinkContainer>
-          </ButtonGroup>
+          <ButtonToolbar>
+            <ButtonGroup>
+              <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
+                <Button>Show Samples</Button>
+              </LinkContainer>
+            </ButtonGroup>
+            <ButtonGroup>
+              <LinkContainer to={`/recordings/${recording.id}/replay`}>
+                <Button><Glyphicon glyph="play"/></Button>
+              </LinkContainer>
+            </ButtonGroup>
+          </ButtonToolbar>
         </Col>
       </Panel>
     )

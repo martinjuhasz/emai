@@ -39,7 +39,7 @@ export default class SampleVideo extends Component {
         </Col>
         <Col>
           <Panel>
-            <Video video_id={video_id} stop_time={sample.video_start + this.timeFrameAfter} ref='video'/>
+            <Video video_id={video_id} stop_time={sample.video_start + this.timeFrameAfter} ref='video' autoplay={false}/>
           </Panel>
         </Col>
       </Col>

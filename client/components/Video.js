@@ -43,11 +43,11 @@ export default class Video extends Component {
   }
 
   render() {
-    const { video_id, controls } = this.props
+    const { video_id, controls, autoplay } = this.props
     if(!video_id) { return null }
 
-    const videoControls = {controls: controls}
-
+    const videoControls = {controls: controls, autoPlay: autoplay}
+    console.log(autoplay)
     return (
       <ResponsiveEmbed a16by9>
         <video ref='video' onTimeUpdate={this.onTimeUpdate} onSeeked={this.onSeeked} {...videoControls}>
@@ -63,6 +63,7 @@ Video.propTypes = {
   stop_time: PropTypes.number,
   onTimeUpdate: PropTypes.func,
   onSeeked: PropTypes.func,
-  controls: PropTypes.bool
+  controls: PropTypes.bool,
+  autoplay: PropTypes.bool.isRequired
 }
 

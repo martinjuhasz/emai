@@ -134,8 +134,9 @@ class RecorderResource(Resource):
         # classify messages if wanted
         if 'classifier' in request.GET:
             classifier_id = to_objectid(request.GET['classifier'])
-            classifier = await Classifier.find_one({'_id': classifier_id})
-            await TrainingService.classify_messages(classifier, messages)
+            if classifier_id:
+                classifier = await Classifier.find_one({'_id': classifier_id})
+                await TrainingService.classify_messages(classifier, messages)
 
         return Response(messages)
 

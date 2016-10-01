@@ -228,9 +228,12 @@ class ClassifierResource(Resource):
         # check if recording exists
         classifier = await Classifier.find_one({'_id': classifier_id})
 
-        train_count = 350
+        train_count = None
         if 'train_count' in request.GET:
-            train_count = int(request.GET['train_count'])
+            try:
+                train_count = int(request.GET['train_count'])
+            except ValueError:
+                pass
 
         try:
             await TrainingService.train(classifier, train_count=train_count)

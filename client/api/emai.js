@@ -8,8 +8,8 @@ sample.define({
 })
 const review = new Schema('review');
 
-/* const api_url = 'http://10.0.1.88:8082' */
-const api_url = 'http://0.0.0.0:8082'
+const api_url = 'http://10.0.1.88:8082'
+/* const api_url = 'http://0.0.0.0:8082' */
 
 export default {
 
@@ -54,15 +54,8 @@ export default {
       .then(json => callback(json))
   },
 
-  getReview(classifier_id, callback) {
-    const url = `${api_url}/classifiers/${classifier_id}/review`
-    return fetch(url)
-      .then(response => response.json())
-      .then(json => callback(normalize(json, arrayOf(review))))
-  },
-
-  trainClassifier(classifier_id, callback) {
-    const url = `${api_url}/classifiers/${classifier_id}/train`
+  trainClassifier(classifier_id, limit, callback) {
+    const url = `${api_url}/classifiers/${classifier_id}/train?train_count=${limit}`
     return fetch(url,  {method: 'POST'})
       .then(response => response.json())
       .then(json => callback(json))

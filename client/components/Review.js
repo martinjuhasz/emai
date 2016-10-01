@@ -1,10 +1,10 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import { classifyReview, saveReview, declassifyReview, classifyReviewMessage } from '../actions'
 import * as messages from '../actions/messages'
 import Sample from '../components/Sample'
 import {Col } from 'react-bootstrap/lib'
 import SampleToolbar from '../components/SampleToolbar'
+import { byId as messagesById } from '../reducers/messages'
 
 class Review extends Component {
 
@@ -66,7 +66,7 @@ Review.propTypes = {
 
 function mapStateToProps(state, ownProps) {
   return {
-
+    messages: messagesById(state, ownProps.classifier.unlabeled_train_set)
   }
 }
 

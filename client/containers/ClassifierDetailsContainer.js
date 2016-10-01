@@ -6,7 +6,7 @@ import ClassifierSettings from '../components/ClassifierSettings'
 import ClassifierPerformance from '../components/ClassifierPerformance'
 import { ButtonToolbar, Button } from 'react-bootstrap/lib'
 
-class ClassifierContainer extends Component {
+class ClassifierDetailsContainer extends Component {
 
   render() {
     const { classifier } = this.props
@@ -28,7 +28,7 @@ class ClassifierContainer extends Component {
   }
 }
 
-ClassifierContainer.propTypes = {
+ClassifierDetailsContainer.propTypes = {
   classifier: PropTypes.any,
   onGetReviewClicked: PropTypes.func.isRequired,
   onTrainClassifierClicked: PropTypes.func.isRequired
@@ -54,4 +54,4 @@ const mapDispatchToProps = (dispatch, ownProps) => {
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(ClassifierContainer)
+)(ClassifierDetailsContainer)

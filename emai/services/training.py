@@ -74,6 +74,11 @@ class DataSource(object):
         ids = [message.id for message in positive + negative + neutral]
         return ids
 
+    async def get_max_train_count(self):
+        channel_filter = await self.create_channel_filter()
+        message_filter = {**{'$or': channel_filter}, **{'label': {'$exists': True}}}
+        return await Message.find(message_filter).count()
+
     async def random_message(self, interactive=False):
         channel_filter = await self.create_channel_filter()
         label = randint(1, 3) if not interactive else None
@@ -214,7 +219,6 @@ class DataSource(object):
         shuffled = neutrals + negatives + positives
         shuffle(shuffled)
 
-
         data = [message.content for message in shuffled]
         target = [message.label - 1 for message in shuffled]
         return data, target
@@ -346,16 +350,29 @@ class Trainer(object):
         new_unlabeled_set = [mid for mid in self.classifier.unlabeled_train_set if mid not in newly_labeled]
         self.classifier.unlabeled_train_set = new_unlabeled_set
 
-    async def train_until(self, train_count):
+    async def train_until(self, train_count, test_iterative=False):
+        if not train_count:
+            train_count = await self.datasource.get_max_train_count()
+
         current_train_count = len(self.classifier.train_set)
         if train_count <= current_train_count:
             return
 
         add_train_set = await self.datasource.get_sample_train_set(amount=train_count - current_train_count)
-        self.classifier.train_set.extend(add_train_set)
+        if test_iterative:
 
-        await self.train()
-        await self.test()
+            for train_set in add_train_set:
+                self.classifier.train_set.append(train_set)
+                try:
+                    await self.train()
+                    await self.test()
+                except ValueError:
+                    pass
+        else:
+            self.classifier.train_set.extend(add_train_set)
+            await self.train()
+            await self.test()
+
         await self.save()
 
     async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, randomize_step=False, interactive=True, learn_type=LearnType.LeastConfident):
@@ -469,11 +486,11 @@ class TrainingService(object):
         await classifier.reset()
 
     @staticmethod
-    async def train(classifier, train_count=350):
+    async def train(classifier, train_count=None):
         trainer = Trainer(classifier)
         trainer.ensure_configured()
 
-        await trainer.train_until(train_count)
+        await trainer.train_until(train_count, test_iterative=True)
 
     @staticmethod
     async def learn(classifier):

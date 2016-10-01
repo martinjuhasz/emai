@@ -2,7 +2,8 @@ import React, { Component, PropTypes } from 'react'
 import SamplesContainer from './SamplesContainer'
 import RecordingsContainer from './RecordingsContainer'
 import RecordingContainer from './RecordingContainer'
-import ClassifierContainer from './ClassifierContainer'
+import ClassifierDetailsContainer from './ClassifierDetailsContainer'
+import ClassifiersContainer from './ClassifiersContainer'
 import TrainingContainer from './TrainingContainer'
 import ReplayContainer from './ReplayContainer'
 import { Router, Route,  IndexRoute, hashHistory } from 'react-router'
@@ -22,8 +23,9 @@ export default class App extends Component {
             </Route>
           </Route>
 
-          <Route path='train' component={TrainingContainer}>
-            <Route path=':classifier_id' component={ClassifierContainer} />
+          <Route path='train' component={ClassifiersContainer}>
+            <Route path=':classifier_id' component={ClassifierDetailsContainer} />
+            <Route path=':classifier_id/train' component={TrainingContainer} />
           </Route>
 
           <Route path='*' component={NotFound} />

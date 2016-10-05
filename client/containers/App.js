@@ -43,10 +43,7 @@ class Navigation extends Component {
           <NavItem>Recordings</NavItem>
         </LinkContainer>
         <LinkContainer to='train'>
-          <NavItem>Train</NavItem>
-        </LinkContainer>
-        <LinkContainer to='live'>
-          <NavItem>Live</NavItem>
+          <NavItem>Training</NavItem>
         </LinkContainer>
       </Nav>
     )

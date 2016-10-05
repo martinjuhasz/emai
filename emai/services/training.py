@@ -278,6 +278,10 @@ class Trainer(object):
     def estimator(self, value):
         self._estimator = value
 
+    def reset(self):
+        if self.classifier:
+            self.datasource = DataSource(self.classifier)
+
     def ensure_configured(self):
         if not self.classifier.settings:
             raise ValueError('Classifier Settings must be set')
@@ -318,7 +322,7 @@ class Trainer(object):
         if classifier_type == ClassifierType.LogisticRegression:
             return LogisticRegression(random_state=42, C=2)
         elif classifier_type == ClassifierType.SupportVectorMachine:
-            return SVC(kernel='linear', random_state=10, C=2)
+            return SVC(random_state=10, C=2, gamma=0.5)
         elif classifier_type == ClassifierType.NaiveBayes:
             return MultinomialNB(alpha=0.5)
 
@@ -500,17 +504,6 @@ class TrainingService(object):
         await trainer.learn()
 
         return await trainer.messages_for_mentoring()
-
-    @staticmethod
-    async def classify_messages(classifier, messages):
-        trainer = Trainer(classifier)
-        trainer.ensure_configured()
-        trainer.load()
-
-        message_contents = [message.content for message in messages]
-        predictions = trainer.estimator.predict(message_contents)
-        for count, message in enumerate(messages):
-            message.predicted_label = predictions[count] + 1
 
 
 

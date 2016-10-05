@@ -8,7 +8,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
-from sklearn.cross_validation import ShuffleSplit, BaseShuffleSplit, check_random_state
+from sklearn.cross_validation import ShuffleSplit
 from bson import ObjectId
 import matplotlib
 matplotlib.use('Agg')
@@ -16,17 +16,11 @@ from matplotlib import pyplot
 import numpy
 import click
 import pickle
-from sklearn.base import is_classifier, clone
-from sklearn.cross_validation import check_cv
-from sklearn.externals.joblib import Parallel, delayed
-from sklearn.cross_validation import _safe_split, _score, _fit_and_score
-from sklearn.metrics.scorer import check_scoring
-from sklearn.utils import indexable
 
 
 # evaluation_recording = ObjectId('578fbf877b958024092b8e63')  # RBTV
 evaluation_recording = ObjectId('5798ea0a7b95805f6e4dc1b2')  # Lassiz
-
+# evaluation_recording = ObjectId('57e4e64c7b9580154ffa49b7')  # Burke
 
 async def mentor_messages(messages):
     if not messages or len(messages) <= 0:
@@ -43,18 +37,18 @@ async def mentor_messages(messages):
 
 async def active_learning_curve(trainer, iterations, train_sizes, max_size):
     out = []
+    train_sizes_abs = _translate_train_sizes(train_sizes, max_size)
+    n_unique_ticks = train_sizes_abs.shape[0]
     for iteration in range(0, iterations):
         # setup test set for classifier
         await trainer.classifier.reset()
+        trainer.reset()
         data_source = DataSource(trainer.classifier)
         trainer.classifier.test_set = await data_source.generate_test_data(limit=300, test_size=0.8)
 
-        train_sizes_abs = _translate_train_sizes(train_sizes, max_size)
-        n_unique_ticks = train_sizes_abs.shape[0]
-
         for train_size in train_sizes_abs:
             while len(trainer.classifier.train_set) < train_size:
-                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=True, randomize_step=2, interactive=False, learn_type=LearnType.MostInformative)
+                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=False, randomize_step=False, interactive=False, learn_type=LearnType.LeastConfident)
                 click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations, train_size, n_unique_ticks, len(trainer.classifier.train_set), train_size))
                 messages = await trainer.messages_for_mentoring()
                 await mentor_messages(messages)
@@ -92,7 +86,7 @@ async def evaluate_active_learning():
 
     # Test Logistic Regression
     trainer = Trainer(classifier)
-    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 5, numpy.linspace(0.05, 1., 10), 369)
+    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 20, numpy.linspace(0.05, 1., 10), 369)
     pickle.dump((train_sizes, train_scores, test_scores), open("al.dump", "wb"))
     plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="AL random - LogisticRegression - C=2", ylim=ylim)
 

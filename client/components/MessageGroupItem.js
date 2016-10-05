@@ -41,7 +41,7 @@ class MessageGroupItem extends Component {
     const { message, selected_message } = this.props
     const style = this.getListStyle(message, selected_message)
     return (
-      <ListGroupItem bsStyle={style} onTouchTap={this.props.onTouchTap}>
+      <ListGroupItem onTouchTap={this.props.onTouchTap}>
         {this.renderPredictedLabel(message)}
         {message.content}
         {message.emoticons.map((emoticon) => <Emoticon key={emoticon.identifier} emoticon={emoticon}/>)}

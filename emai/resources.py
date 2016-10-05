@@ -8,6 +8,7 @@ from emai.utils import log, config
 from aiohttp.web import StreamResponse
 from emai.services.datasets import DataSetService
 from emai.services.training import TrainingService
+from emai.services.prediction import PredictionService
 from emai.exceptions import ResourceExistsException, ResourceUnavailableException
 import aiohttp_cors
 
@@ -23,6 +24,7 @@ def setup(app):
 
     cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get))
     cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create))
+    # TODO: DELETE RECORDING
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/stats', RecorderResource.stats))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
@@ -32,6 +34,7 @@ def setup(app):
 
     cors.add(app.router.add_route('GET', '/classifiers', ClassifierResource.get))
     cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create))
+    # TODO: DELETE CLASSIFIER
     cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/learn', ClassifierResource.learn))
@@ -136,7 +139,7 @@ class RecorderResource(Resource):
             classifier_id = to_objectid(request.GET['classifier'])
             if classifier_id:
                 classifier = await Classifier.find_one({'_id': classifier_id})
-                await TrainingService.classify_messages(classifier, messages)
+                await PredictionService.classify_messages(classifier, messages)
 
         return Response(messages)
 

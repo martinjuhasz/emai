@@ -15,23 +15,14 @@ class ClassifierDetailsContainer extends Component {
       <div>
         <h2>{classifier.title}</h2>
 
-        <ButtonToolbar>
-          <Button bsStyle="danger" onTouchTap={() => {this.props.onTrainClassifierClicked()}}>Learn</Button>
-          <Button onTouchTap={() => this.props.onGetReviewClicked()}>Load Review</Button>
-        </ButtonToolbar>
-
         <ClassifierSettings classifier={classifier} />
-
-        <ClassifierPerformance classifier={classifier} />
       </div>
     )
   }
 }
 
 ClassifierDetailsContainer.propTypes = {
-  classifier: PropTypes.any,
-  onGetReviewClicked: PropTypes.func.isRequired,
-  onTrainClassifierClicked: PropTypes.func.isRequired
+  classifier: PropTypes.any
 }
 
 function mapStateToProps(state, ownProps) {
@@ -40,18 +31,6 @@ function mapStateToProps(state, ownProps) {
   }
 }
 
-const mapDispatchToProps = (dispatch, ownProps) => {
-  return {
-    onGetReviewClicked: () => {
-      dispatch(getReview(ownProps.params.classifier_id))
-    },
-    onTrainClassifierClicked: () => {
-      dispatch(learnClassifier(ownProps.params.classifier_id))
-    }
-  }
-}
-
 export default connect(
-  mapStateToProps,
-  mapDispatchToProps
+  mapStateToProps
 )(ClassifierDetailsContainer)

@@ -4,7 +4,7 @@ import { byId as classifierById } from '../reducers/classifiers'
 import { trainClassifier, learnClassifier } from '../actions'
 import ClassifierDetails from '../components/ClassifierDetails'
 import ClassifierPerformance from '../components/ClassifierPerformance'
-import { ButtonToolbar, Button, Col, Row, FormGroup, InputGroup, FormControl, ButtonGroup, DropdownButton, MenuItem  } from 'react-bootstrap/lib'
+import { ButtonToolbar, Button, Col, Row, Panel, InputGroup, FormControl, ButtonGroup, DropdownButton, MenuItem  } from 'react-bootstrap/lib'
 import Review from '../components/Review'
 
 class TrainingContainer extends Component {
@@ -31,7 +31,7 @@ class TrainingContainer extends Component {
 
         <h3>Training</h3>
         <Row>
-          <Col xs={12} sm={4} md={4} className='hspace'>
+          <Col xs={12} sm={7} md={7} className='hspace'>
             <ButtonToolbar>
               <ButtonGroup>
                 <Button onTouchTap={() => this.props.onTrainClicked()}>Train</Button>
@@ -49,14 +49,10 @@ class TrainingContainer extends Component {
               </ButtonGroup>
             </ButtonToolbar>
 
-            <p>
+            <div className="hspace">
               Train a Classifier to improvie it's Performance. "Train" will iterate random samples until no samples are left.
               "Learn" will query the most interesting messages and ask you to review them.
-            </p>
-          </Col>
-
-          <Col xs={12} sm={3} md={3}>
-
+            </div>
           </Col>
           <Col xs={12} sm={5} md={5}>
             <Review classifier={classifier} />

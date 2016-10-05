@@ -194,9 +194,8 @@ class ClassifierResultChart extends Component {
         <ButtonToolbar className='hspace'>
           <ButtonGroup>
             <Button onTouchTap={() => this.handlePerformanceStateClick('precision')}>Precision</Button>
-            <Button onTouchTap={() => this.handlePerformanceStateClick('f1')}>F-beta score</Button>
             <Button onTouchTap={() => this.handlePerformanceStateClick('recall')}>Recall</Button>
-            <Button onTouchTap={() => this.handlePerformanceStateClick('support')}>Support</Button>
+            <Button onTouchTap={() => this.handlePerformanceStateClick('f1')}>F-beta score</Button>
           </ButtonGroup>
         </ButtonToolbar>
         <Panel>

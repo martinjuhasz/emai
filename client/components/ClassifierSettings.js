@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
-import { FormGroup, Radio, ControlLabel, Col, Panel, Clearfix, ButtonToolbar, Button, FormControl } from 'react-bootstrap/lib'
+import { FormGroup, Radio, ControlLabel, Col, Panel, Clearfix, ButtonToolbar, Button, Row } from 'react-bootstrap/lib'
 import { updateClassifier } from '../actions'
 
 class ClassifierSettings extends Component {
@@ -11,11 +11,14 @@ class ClassifierSettings extends Component {
       selected_type: null,
       selected_ngram: null,
       selected_stopwords: null,
-      selected_idf: null
+      selected_idf: null,
+      selected_c: null,
+      selected_alpha: null
     }
     this.onSaveClicked = this.onSaveClicked.bind(this)
     this.onTestClicked = this.onTestClicked.bind(this)
     this.onValueChange = this.onValueChange.bind(this)
+    this.classifierSettings = this.classifierSettings.bind(this)
     this.setStateFromClassifier = this.setStateFromClassifier.bind(this)
   }
 
@@ -69,62 +72,88 @@ class ClassifierSettings extends Component {
 
   }
 
+  classifierSettings() {
+
+  }
+
   render() {
     return (
       <div>
         <h3>Settings</h3>
 
-        <Col xs={12} sm={6} md={6}>
-          <Panel>
-            <FormGroup>
-              <ControlLabel>Classifier Type</ControlLabel>
-              <Radio checked={this.state.selected_type === '3'} onChange={() => {this.onValueChange('selected_type', '3')}}>Logistic Regression</Radio>
-              <Radio checked={this.state.selected_type === '2'} onChange={() => {this.onValueChange('selected_type', '2')}}>Support Vector Machine</Radio>
-              <Radio checked={this.state.selected_type === '1'} onChange={() => {this.onValueChange('selected_type', '1')}}>Naive Bayes</Radio>
-            </FormGroup>
-          </Panel>
-        </Col>
+        <Row>
+          <Col xs={12} sm={6} md={6}>
+            <Panel>
+              <FormGroup>
+                <ControlLabel>Classifier Type</ControlLabel>
+                <Radio checked={this.state.selected_type === '3'} onChange={() => {this.onValueChange('selected_type', '3')}}>Logistic Regression</Radio>
+                <Radio checked={this.state.selected_type === '2'} onChange={() => {this.onValueChange('selected_type', '2')}}>Support Vector Machine</Radio>
+                <Radio checked={this.state.selected_type === '1'} onChange={() => {this.onValueChange('selected_type', '1')}}>Naive Bayes</Radio>
+              </FormGroup>
+            </Panel>
+          </Col>
 
-        <Col xs={12} sm={6} md={6}>
-          <Panel>
-            <FormGroup>
-              <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
-                N-Gram Range
-              </Col>
-              <Col xs={12} sm={8} md={8}>
-                <Radio inline checked={this.state.selected_ngram === '1'} onChange={() => {this.onValueChange('selected_ngram', '1')}}>1-1</Radio>
-                <Radio inline checked={this.state.selected_ngram === '2'} onChange={() => {this.onValueChange('selected_ngram', '2')}}>1-2</Radio>
-                <Radio inline checked={this.state.selected_ngram === '3'} onChange={() => {this.onValueChange('selected_ngram', '3')}}>1-3</Radio>
-              </Col>
-              <Clearfix />
-            </FormGroup>
-            <FormGroup>
-              <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
-                Stop Words
-              </Col>
-              <Col xs={12} sm={8} md={8}>
-                <Radio inline checked={this.state.selected_stopwords === 'true'} onChange={() => {this.onValueChange('selected_stopwords', 'true')}}>Yes</Radio>
-                <Radio inline checked={this.state.selected_stopwords === 'false'} onChange={() => {this.onValueChange('selected_stopwords', 'false')}}>No</Radio>
-              </Col>
-              <Clearfix />
-            </FormGroup>
-            <FormGroup>
-              <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
-                IDF
-              </Col>
-              <Col xs={12} sm={8} md={8}>
-                <Radio inline checked={this.state.selected_idf === 'true'} onChange={() => {this.onValueChange('selected_idf', 'true')}}>Yes</Radio>
-                <Radio inline checked={this.state.selected_idf === 'false'} onChange={() => {this.onValueChange('selected_idf', 'false')}}>No</Radio>
-              </Col>
-              <Clearfix />
-            </FormGroup>
-          </Panel>
-        </Col>
-
-        <ButtonToolbar>
-          <Button bsStyle="danger" onTouchTap={() => {this.onSaveClicked()}}>Update</Button>
-          <Button onTouchTap={() => {this.onTestClicked()}}>Test for best settings</Button>
-        </ButtonToolbar>
+          <Col xs={12} sm={6} md={6}>
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                  C
+                </Col>
+                <Col xs={12} sm={10} md={10}>
+                  <Radio inline checked={this.state.selected_c === '1'} onChange={() => {this.onValueChange('selected_c', '1')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_c === '2'} onChange={() => {this.onValueChange('selected_c', '2')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_c === '3'} onChange={() => {this.onValueChange('selected_c', '3')}}>1</Radio>
+                  <Radio inline checked={this.state.selected_c === '4'} onChange={() => {this.onValueChange('selected_c', '4')}}>2</Radio>
+                  <Radio inline checked={this.state.selected_c === '5'} onChange={() => {this.onValueChange('selected_c', '5')}}>4</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+          </Col>
+        </Row>
+        <Row>
+          <Col xs={12} sm={6} md={6}>
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
+                  N-Gram Range
+                </Col>
+                <Col xs={12} sm={8} md={8}>
+                  <Radio inline checked={this.state.selected_ngram === '1'} onChange={() => {this.onValueChange('selected_ngram', '1')}}>1-1</Radio>
+                  <Radio inline checked={this.state.selected_ngram === '2'} onChange={() => {this.onValueChange('selected_ngram', '2')}}>1-2</Radio>
+                  <Radio inline checked={this.state.selected_ngram === '3'} onChange={() => {this.onValueChange('selected_ngram', '3')}}>1-3</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+              <FormGroup>
+                <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
+                  Stop Words
+                </Col>
+                <Col xs={12} sm={8} md={8}>
+                  <Radio inline checked={this.state.selected_stopwords === 'true'} onChange={() => {this.onValueChange('selected_stopwords', 'true')}}>Yes</Radio>
+                  <Radio inline checked={this.state.selected_stopwords === 'false'} onChange={() => {this.onValueChange('selected_stopwords', 'false')}}>No</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+              <FormGroup>
+                <Col xs={12} sm={4} md={4} componentClass={ControlLabel}>
+                  IDF
+                </Col>
+                <Col xs={12} sm={8} md={8}>
+                  <Radio inline checked={this.state.selected_idf === 'true'} onChange={() => {this.onValueChange('selected_idf', 'true')}}>Yes</Radio>
+                  <Radio inline checked={this.state.selected_idf === 'false'} onChange={() => {this.onValueChange('selected_idf', 'false')}}>No</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+          </Col>
+        </Row>
+        <Row>
+          <ButtonToolbar>
+            <Button bsStyle="danger" onTouchTap={() => {this.onSaveClicked()}}>Update</Button>
+            <Button onTouchTap={() => {this.onTestClicked()}}>Test for best settings</Button>
+          </ButtonToolbar>
+        </Row>
       </div>
     )
   }

@@ -12,7 +12,7 @@ export default class Recording extends Component {
           <Image src={logo_url} rounded responsive />
         </Col>
         <Col xs={10} sm={10} md={10}>
-          <h4>{recording.display_name}</h4>
+          <h4>{recording.display_name} <small>{recording.started}</small></h4>
           <ButtonToolbar>
             <ButtonGroup>
               <LinkContainer to={`/recordings/${recording.id}/samples/10`}>

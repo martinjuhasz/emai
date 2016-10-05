@@ -244,6 +244,38 @@ class Message(Document):
         future = Message.collection.aggregate(pipeline)
         return future
 
+    @staticmethod
+    def clusters(recording, interval, limit=None):
+        interval_milli = interval * 1000
+        pipeline = [
+            {'$match': {
+                'channel_id': str(recording.channel_id),
+                'created': {'$gte': recording.started, '$lt': recording.stopped}
+            }},
+            {'$group': {
+                '_id': {
+                    '$subtract': [
+                        '$created',
+                        {'$mod': [{'$subtract': ['$created', recording.started]}, interval_milli]}
+                    ]
+                },
+                'messages': {
+                    '$push': '$_id'
+                }
+            }},
+            {'$project': {
+                '_id': 0,
+                'id': '$_id',
+                'messages': {'$size': "$messages"}
+            }},
+            {'$sort': {'messages': -1}}
+        ]
+        if limit:
+            pipeline.append({'$limit': limit})
+
+        future = Message.collection.aggregate(pipeline)
+        return future
+
 
 @instance.register
 class Recording(Document):
@@ -295,7 +327,4 @@ class SampleSchema(Schema):
     id = fields.DateTimeField()
     messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
     video_start = fields.IntegerField()
-
-
-
 

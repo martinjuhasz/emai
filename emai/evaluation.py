@@ -48,7 +48,7 @@ async def active_learning_curve(trainer, iterations, train_sizes, max_size):
 
         for train_size in train_sizes_abs:
             while len(trainer.classifier.train_set) < train_size:
-                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=False, randomize_step=False, interactive=False, learn_type=LearnType.LeastConfident)
+                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=True, randomize_step=False, interactive=False, learn_type=LearnType.LeastConfident)
                 click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations, train_size, n_unique_ticks, len(trainer.classifier.train_set), train_size))
                 messages = await trainer.messages_for_mentoring()
                 await mentor_messages(messages)
@@ -86,9 +86,9 @@ async def evaluate_active_learning():
 
     # Test Logistic Regression
     trainer = Trainer(classifier)
-    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 20, numpy.linspace(0.05, 1., 10), 369)
+    train_sizes, train_scores, test_scores = await active_learning_curve(trainer, 20, numpy.linspace(0.05, 1., 10), 340)
     pickle.dump((train_sizes, train_scores, test_scores), open("al.dump", "wb"))
-    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="AL random - LogisticRegression - C=2", ylim=ylim)
+    plot_learning_curve(figure, [1, 1, 1], train_sizes, train_scores, test_scores, title="AL LeastConfident - LogisticRegression - C=2", ylim=ylim)
 
     figure.tight_layout()
     print('ended')
@@ -708,7 +708,7 @@ def plot_learning_curve(figure, position, train_sizes, train_scores, test_scores
 
 async def main():
     # await evaluate_preprocessing_stopwords()
-    # await evaluate_preprocessing_ngram()
+    await evaluate_preprocessing_ngram()
     # await evaluate_preprocessing_idf()
 
     # await evaluate_logreg_classifier()
@@ -727,7 +727,7 @@ async def main():
 
     # await evaluate_classifier_params()
 
-    await evaluate_active_learning()
+    # await evaluate_active_learning()
     # await plot_last_active_learning()
 
     pyplot.savefig('data.png')

@@ -31,3 +31,20 @@ body {
 .prediction-label.success {
   background-color: #3c763d;
 }
+
+.stats {
+  text-align: center;
+}
+
+.stats .digits {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.stats .digits.warning { color: #8a6d3b }
+.stats .digits.danger { color: #a94442 }
+.stats .digits.success { color: #3c763d }
+
+.stats .description {
+
+}

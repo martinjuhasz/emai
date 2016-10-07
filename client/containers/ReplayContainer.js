@@ -62,6 +62,46 @@ class ReplayContainer extends Component {
           <Panel>
             <Video video_id={recording.video_id} ref='video' onTimeUpdate={this.videoTimeUpdated} onSeeked={this.videoSeeked} controls={true} autoplay={true}/>
           </Panel>
+
+          <div className="hspace">
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits">3856</div>
+                <div className="description">total</div>
+              </Panel>
+            </Col>
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits">1815</div>
+                <div className="description">unlabeled</div>
+              </Panel>
+            </Col>
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits">3856</div>
+                <div className="description">labeled</div>
+              </Panel>
+            </Col>
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits success">732</div>
+                <div className="description">correct</div>
+              </Panel>
+            </Col>
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits danger">32</div>
+                <div className="description">failed</div>
+              </Panel>
+            </Col>
+            <Col xs={4} sm={4} md={4}>
+              <Panel className="stats">
+                <div className="digits">321</div>
+                <div className="description">unknown</div>
+              </Panel>
+            </Col>
+          </div>
+
         </Col>
         <Col xs={12} sm={5} md={5}>
           <Col className='hspace'>

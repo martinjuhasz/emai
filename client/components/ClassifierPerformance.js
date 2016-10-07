@@ -20,7 +20,9 @@ class ClassifierPerformance extends Component {
 
     return (
       <Row>
-        <h3>Performance</h3>
+        <Col xs={12} sm={12} md={12}>
+          <h3>Performance</h3>
+        </Col>
         <Col xs={12} sm={7} md={7}>
           { this.renderResult() }
         </Col>
@@ -43,15 +45,41 @@ class ClassifierPerformance extends Component {
 
   renderStatistics() {
     return (
-      <div className="hspace">
-        <Col xs={6} sm={6} md={6}>
-          <Panel>
-            asd
+      <div className="lhspace">
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits">5671</div>
+            <div className="description">total</div>
           </Panel>
         </Col>
-        <Col xs={6} sm={6} md={6}>
-          <Panel>
-            asd
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits">1815</div>
+            <div className="description">unlabeled</div>
+          </Panel>
+        </Col>
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits">3856</div>
+            <div className="description">labeled</div>
+          </Panel>
+        </Col>
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits success">1949</div>
+            <div className="description">positiv</div>
+          </Panel>
+        </Col>
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits danger">445</div>
+            <div className="description">negativ</div>
+          </Panel>
+        </Col>
+        <Col xs={4} sm={4} md={4}>
+          <Panel className="stats">
+            <div className="digits warning">1462</div>
+            <div className="description">neutral</div>
           </Panel>
         </Col>
       </div>

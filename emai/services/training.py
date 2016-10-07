@@ -122,7 +122,11 @@ class DataSource(object):
         messages = await self.generate_review_data(include_unlabeled=interactive)
         messages_data = [message.content for message in messages]
 
-        confidences = estimator.predict_proba(messages_data)
+        classifier_type = ClassifierType(self.classifier.type)
+        if classifier_type == ClassifierType.NaiveBayes:
+            confidences = np.abs(estimator.decision_function(messages_data))
+        else:
+            confidences = estimator.predict_proba(messages_data)
         indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
         #sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
         sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))

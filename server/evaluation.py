@@ -2,8 +2,8 @@ import asyncio
 
 import matplotlib
 from bson import ObjectId
-from emai.persistence import Classifier
-from emai.services.training import ClassifierType, DataSource, PreProcessing, Trainer, LearnType
+from server.persistence import Classifier
+from server.services.training import ClassifierType, DataSource, PreProcessing, Trainer, LearnType
 from sklearn.cross_validation import ShuffleSplit
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer

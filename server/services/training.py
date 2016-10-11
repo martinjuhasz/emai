@@ -9,8 +9,8 @@ from random import shuffle
 import numpy as np
 import scipy
 from bson import ObjectId
-from emai.persistence import Message, Recording, Performance
-from emai.utils import log
+from server.persistence import Message, Recording, Performance
+from server.utils import log
 from sklearn import cross_validation
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer

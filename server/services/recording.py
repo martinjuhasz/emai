@@ -1,9 +1,9 @@
 from datetime import datetime
 from subprocess import Popen, PIPE
 from bson import ObjectId
-from emai.datasource import ChatClient, StreamClient
-from emai.persistence import Message, Recording
-from emai.utils import log, config
+from server.twitch import ChatClient, StreamClient
+from server.persistence import Message, Recording
+from server.utils import log, config
 from umongo import ValidationError
 
 APP_SERVICE_KEY = 'emai_recording_service'

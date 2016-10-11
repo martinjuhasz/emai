@@ -3,7 +3,7 @@ from datetime import datetime
 import aiohttp_cors
 from aiohttp_utils import Response
 from emai import services
-from emai.datasource import TwitchAPI
+from emai.twitch import TwitchAPI
 from emai.persistence import Recording, Classifier, Message, load_json, to_objectid
 from emai.services.message import MessageService
 from emai.services.prediction import PredictionService

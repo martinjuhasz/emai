@@ -3,8 +3,8 @@ from enum import Enum
 
 import aiohttp
 import irc3
-from server.exceptions import ResourceUnavailableException
-from server.utils import log, config, output_stream
+from emai.exceptions import ResourceUnavailableException
+from emai.utils import log, config, output_stream
 from livestreamer import Livestreamer, PluginError, NoPluginError
 
 

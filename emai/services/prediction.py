@@ -1,4 +1,4 @@
-from server.services.training import Trainer
+from emai.services.training import Trainer
 
 
 class PredictionService(object):

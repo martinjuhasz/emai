@@ -1,17 +1,17 @@
 from bson import ObjectId
 from bson.errors import InvalidId
-from server.persistence import Message, SampleSchema
-from server.utils import config, log
+from emai.persistence import Message, SampleSchema
+from emai.utils import config, log
 
-APP_SERVICE_KEY = 'emai_message_service'
+APP_SERVICE_KEY = 'emai_data_set_service'
 
 
 def setup(app, loop=None):
-    service = MessageService(loop=loop)
+    service = DataSetService(loop=loop)
     app[APP_SERVICE_KEY] = service
 
 
-class MessageService(object):
+class DataSetService(object):
     def __init__(self, loop=None):
         self.loop = loop
 

@@ -1,41 +1,64 @@
-from emai.persistence import Message, Recording, Performance, PerformanceResult
-import asyncio
-from time import perf_counter as pc
+import math
+import pickle
+import re
+from datetime import datetime
+from enum import Enum
+from random import randint
+from random import shuffle
+
+import numpy as np
+import scipy
+from bson import ObjectId
+from emai.persistence import Message, Recording, Performance
+from emai.utils import log
+from sklearn import cross_validation
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
-from sklearn.linear_model import SGDClassifier
-from sklearn.svm import LinearSVC, SVC
-from sklearn import cross_validation
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.linear_model import LogisticRegression, SGDClassifier
-from sklearn import metrics
-from bson import ObjectId
-import numpy as np
-from sklearn.grid_search import GridSearchCV
-from sklearn.pipeline import Pipeline
-from emai.utils import log, config
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support
-from enum import Enum
-import pickle
-from datetime import datetime
-from random import shuffle
-import scipy
-import math
-from random import randint
-import re
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.pipeline import Pipeline
+from sklearn.svm import SVC
+
 
 class ClassifierType(Enum):
     NaiveBayes = 1
     SupportVectorMachine = 2
     LogisticRegression = 3
 
+
 class LearnType(Enum):
     LeastConfident = 1
     MostInformative = 2
 
-class PreProcessing(object):
 
-    stop_words = ['aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch', 'daher', 'darum', 'das', 'daß', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dessen', 'deshalb', 'die', 'dies', 'dieser', 'dieses', 'doch', 'dort', 'du', 'durch', 'ein', 'eine', 'einem', 'einen', 'einer', 'eines', 'er', 'es', 'euer', 'eure', 'für', 'hatte', 'hatten', 'hattest', 'hattet', 'hier', 'hinter', 'ich', 'ihr', 'ihre', 'im', 'in', 'ist', 'ja', 'jede', 'jedem', 'jeden', 'jeder', 'jedes', 'jener', 'jenes', 'jetzt', 'kann', 'kannst', 'können', 'könnt', 'machen', 'mein', 'meine', 'mit', 'muß', 'mußt', 'musst', 'müssen', 'müßt', 'nach', 'nachdem', 'nein', 'nicht', 'nun', 'oder', 'seid', 'sein', 'seine', 'sich', 'sie', 'sind', 'soll', 'sollen', 'sollst', 'sollt', 'sonst', 'soweit', 'sowie', 'und', 'unser', 'unsere', 'unter', 'vom', 'von', 'vor', 'wann', 'warum', 'was', 'weiter', 'weitere', 'wenn', 'wer', 'werde', 'werden', 'werdet', 'weshalb', 'wie', 'wieder', 'wieso', 'wir', 'wird', 'wirst', 'wo', 'woher', 'wohin', 'zu', 'zum', 'zur', 'über', "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot", "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during", "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't", "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself", "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it", "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some", "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there", "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through", "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've", "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who", "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll", "you're", "you've", "your", "yours", "yourself", "yourselves"]
+class PreProcessing(object):
+    stop_words = ['aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch',
+                  'daher', 'darum', 'das', 'daß', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dessen',
+                  'deshalb', 'die', 'dies', 'dieser', 'dieses', 'doch', 'dort', 'du', 'durch', 'ein', 'eine', 'einem',
+                  'einen', 'einer', 'eines', 'er', 'es', 'euer', 'eure', 'für', 'hatte', 'hatten', 'hattest', 'hattet',
+                  'hier', 'hinter', 'ich', 'ihr', 'ihre', 'im', 'in', 'ist', 'ja', 'jede', 'jedem', 'jeden', 'jeder',
+                  'jedes', 'jener', 'jenes', 'jetzt', 'kann', 'kannst', 'können', 'könnt', 'machen', 'mein', 'meine',
+                  'mit', 'muß', 'mußt', 'musst', 'müssen', 'müßt', 'nach', 'nachdem', 'nein', 'nicht', 'nun', 'oder',
+                  'seid', 'sein', 'seine', 'sich', 'sie', 'sind', 'soll', 'sollen', 'sollst', 'sollt', 'sonst',
+                  'soweit', 'sowie', 'und', 'unser', 'unsere', 'unter', 'vom', 'von', 'vor', 'wann', 'warum', 'was',
+                  'weiter', 'weitere', 'wenn', 'wer', 'werde', 'werden', 'werdet', 'weshalb', 'wie', 'wieder', 'wieso',
+                  'wir', 'wird', 'wirst', 'wo', 'woher', 'wohin', 'zu', 'zum', 'zur', 'über', "a", "about", "above",
+                  "after", "again", "against", "all", "am", "an", "and", "any", "are", "aren't", "as", "at", "be",
+                  "because", "been", "before", "being", "below", "between", "both", "but", "by", "can't", "cannot",
+                  "could", "couldn't", "did", "didn't", "do", "does", "doesn't", "doing", "don't", "down", "during",
+                  "each", "few", "for", "from", "further", "had", "hadn't", "has", "hasn't", "have", "haven't",
+                  "having", "he", "he'd", "he'll", "he's", "her", "here", "here's", "hers", "herself", "him", "himself",
+                  "his", "how", "how's", "i", "i'd", "i'll", "i'm", "i've", "if", "in", "into", "is", "isn't", "it",
+                  "it's", "its", "itself", "let's", "me", "more", "most", "mustn't", "my", "myself", "no", "nor", "not",
+                  "of", "off", "on", "once", "only", "or", "other", "ought", "our", "ours", "ourselves", "out", "over",
+                  "own", "same", "shan't", "she", "she'd", "she'll", "she's", "should", "shouldn't", "so", "some",
+                  "such", "than", "that", "that's", "the", "their", "theirs", "them", "themselves", "then", "there",
+                  "there's", "these", "they", "they'd", "they'll", "they're", "they've", "this", "those", "through",
+                  "to", "too", "under", "until", "up", "very", "was", "wasn't", "we", "we'd", "we'll", "we're", "we've",
+                  "were", "weren't", "what", "what's", "when", "when's", "where", "where's", "which", "while", "who",
+                  "who's", "whom", "why", "why's", "with", "won't", "would", "wouldn't", "you", "you'd", "you'll",
+                  "you're", "you've", "your", "yours", "yourself", "yourselves"]
 
     @staticmethod
     def transformation(text):
@@ -50,7 +73,6 @@ class PreProcessing(object):
 
 
 class DataSource(object):
-
     def __init__(self, classifier):
         self.classifier = classifier
         self.informative_stack = None
@@ -66,7 +88,7 @@ class DataSource(object):
         return entropy
 
     async def get_sample_train_set(self, amount=9):
-        amount = math.ceil(amount/3)
+        amount = math.ceil(amount / 3)
         channel_filter = await self.create_channel_filter()
         positive = await Message.get_random(channel_filter, 3, amount)
         negative = await Message.get_random(channel_filter, 2, amount)
@@ -128,26 +150,25 @@ class DataSource(object):
         else:
             confidences = estimator.predict_proba(messages_data)
         indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        #sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
+        # sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
         sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
         return messages[sorted_confidences[-1][0]]
 
-        #confidences = np.abs(estimator.decision_function(messages_data))
-        #average_confidences = np.average(confidences, axis=1)
-        #sorted_confidences = np.argsort(average_confidences)
-        #return messages[sorted_confidences[0]]
+        # confidences = np.abs(estimator.decision_function(messages_data))
+        # average_confidences = np.average(confidences, axis=1)
+        # sorted_confidences = np.argsort(average_confidences)
+        # return messages[sorted_confidences[0]]
 
-        #confidences = np.abs(estimator.decision_function(messages_data))
-        #indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        #sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
-        #return messages[sorted_confidences[-1][0]]
+        # confidences = np.abs(estimator.decision_function(messages_data))
+        # indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
+        # sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
+        # return messages[sorted_confidences[-1][0]]
 
-        #confidences = estimator.predict_proba(messages_data)
-        #sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
-        #return messages[sorted_confidences[-1]]
+        # confidences = estimator.predict_proba(messages_data)
+        # sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
+        # return messages[sorted_confidences[-1]]
 
-
-    async def generate_vocabulary_data(self , include_unlabeled=False):
+    async def generate_vocabulary_data(self, include_unlabeled=False):
         channel_filter = await self.create_channel_filter()
         id_filter = self.classifier.test_set
         label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
@@ -191,9 +212,14 @@ class DataSource(object):
         negative_count = await negative_cursor.count()
         neutral_count = await neutral_cursor.count()
         total_count = positive_count + negative_count + neutral_count
-        log.info('Test Data loaded: Total/Labeled: {}/{} Positive: ~{}% Negative: ~{}% Neutral: ~{}%'.format(all_count, total_count,
-            int(100 / total_count * positive_count), int(100 / total_count * negative_count),
-            int(100 / total_count * neutral_count)))
+        log.info('Test Data loaded: Total/Labeled: {}/{} Positive: ~{}% Negative: ~{}% Neutral: ~{}%'.format(all_count,
+                                                                                                             total_count,
+                                                                                                             int(
+                                                                                                                 100 / total_count * positive_count),
+                                                                                                             int(
+                                                                                                                 100 / total_count * negative_count),
+                                                                                                             int(
+                                                                                                                 100 / total_count * neutral_count)))
 
         positives = [message.id for message in await positive_cursor.to_list(None)]
         negatives = [message.id for message in await negative_cursor.to_list(None)]
@@ -234,7 +260,6 @@ class DataSource(object):
             {'channel_id': str(recording.channel_id), 'created': {'$gte': recording.started, '$lt': recording.stopped}}
             for recording in recordings]
 
-
     async def load_test_data(self):
         message_cursor = Message.find({'_id': {'$in': self.classifier.test_set}})
         return await DataSource.load_data(message_cursor)
@@ -255,7 +280,6 @@ class DataSource(object):
 
 
 class Trainer(object):
-
     def __init__(self, classifier):
         self.classifier = classifier
 
@@ -383,7 +407,8 @@ class Trainer(object):
 
         await self.save()
 
-    async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, randomize_step=False, interactive=True, learn_type=LearnType.LeastConfident):
+    async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, randomize_step=False,
+                    interactive=True, learn_type=LearnType.LeastConfident):
         # check first if some mentoring was done or if mentoring is needed
         await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
@@ -402,7 +427,8 @@ class Trainer(object):
             # check if next message needs mentoring
             if not randomize or (randomize and randomize_step and randomize_counter % randomize_step == 0):
                 if learn_type == LearnType.LeastConfident:
-                    next_message = await self.datasource.least_confident_message(self.estimator, interactive=interactive)
+                    next_message = await self.datasource.least_confident_message(self.estimator,
+                                                                                 interactive=interactive)
                 else:
                     next_message = await self.datasource.most_informative(interactive=interactive)
             else:
@@ -468,12 +494,12 @@ class Trainer(object):
             self.test_data, self.test_target = await self.datasource.load_test_data()
         train_data, train_target = await self.datasource.load_train_data()
 
-        scores = [self.estimator.score(train_data, train_target), self.estimator.score(self.test_data, self.test_target)]
+        scores = [self.estimator.score(train_data, train_target),
+                  self.estimator.score(self.test_data, self.test_target)]
         return scores
 
 
 class TrainingService(object):
-
     @staticmethod
     async def update_classifier(classifier, new_data):
         if 'training_sets' in new_data:
@@ -508,11 +534,3 @@ class TrainingService(object):
         await trainer.learn()
 
         return await trainer.messages_for_mentoring()
-
-
-
-
-
-
-
-

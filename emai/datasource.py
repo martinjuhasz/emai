@@ -1,10 +1,11 @@
-from emai.utils import log, config, output_stream
-from livestreamer import Livestreamer, PluginError, NoPluginError, StreamError
-from enum import Enum
-from emai.exceptions import ResourceUnavailableException
-import irc3
 import re
+from enum import Enum
+
 import aiohttp
+import irc3
+from emai.exceptions import ResourceUnavailableException
+from emai.utils import log, config, output_stream
+from livestreamer import Livestreamer, PluginError, NoPluginError
 
 
 class TwitchAPI(object):
@@ -35,7 +36,6 @@ class TwitchAPI(object):
 
 
 class StreamClient(object):
-
     class Quality(Enum):
         source = 'source'
         high = 'high'
@@ -66,7 +66,7 @@ class StreamClient(object):
 
 
 class ChatClient(object):
-    def __init__(self,  message_handler=None, connect_handler=None):
+    def __init__(self, message_handler=None, connect_handler=None):
         bot_config = dict(
             nick=config.get('twitch', 'username'),
             username=config.get('twitch', 'username'),
@@ -91,7 +91,6 @@ class ChatClient(object):
 
 @irc3.plugin
 class ChatClientLoggingPlugin(object):
-
     def __init__(self, context):
         self.context = context
 
@@ -124,7 +123,8 @@ class ChatClientLoggingPlugin(object):
         user_id = tags.get('user-id', None)
         username = tags.get('display-name', None)
         emoticon_string = tags.get('emotes', None)
-        emoticons = [{'identifier': match[0], 'occurrences': match[1].split(',')} for match in re.findall('(\d*):((?:\d*-\d*,?)+)', emoticon_string)]
+        emoticons = [{'identifier': match[0], 'occurrences': match[1].split(',')} for match in
+                     re.findall('(\d*):((?:\d*-\d*,?)+)', emoticon_string)]
         identifier = tags.get('id', None)
 
         if not channel or not user_id:
@@ -138,5 +138,3 @@ class ChatClientLoggingPlugin(object):
             'emoticons': emoticons,
             'identifier': identifier
         }
-
-

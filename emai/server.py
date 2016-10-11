@@ -1,9 +1,10 @@
 import asyncio
+
 from aiohttp import web
+from aiohttp_utils import negotiation, path_norm
+from emai import persistence
 from emai import resources
 from emai.services import recording, datasets
-from emai import persistence
-from aiohttp_utils import negotiation, path_norm
 from emai.utils import config, log
 
 

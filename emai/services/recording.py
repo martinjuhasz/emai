@@ -1,10 +1,10 @@
 from datetime import datetime
-from umongo import ValidationError
+from subprocess import Popen, PIPE
+from bson import ObjectId
 from emai.datasource import ChatClient, StreamClient
 from emai.persistence import Message, Recording
 from emai.utils import log, config
-from subprocess import Popen, PIPE
-from bson import ObjectId
+from umongo import ValidationError
 
 APP_SERVICE_KEY = 'emai_recording_service'
 
@@ -18,7 +18,6 @@ class RecordingService(object):
     def __init__(self, loop=None):
         self.loop = loop
         self.recorder = Recorder(loop=loop)
-        self.recorder.start()
 
     async def create_recording(self, channel_details):
         video_file_id = await self.start_recording(channel_details['name'])
@@ -50,15 +49,11 @@ class RecordingService(object):
 
 
 class Recorder(object):
-
     def __init__(self, loop=None):
         self.loop = loop
         self._chat_client = ChatClient(message_handler=self.on_chat_message, connect_handler=self.on_chat_connection)
         self._stream_client = StreamClient()
         self.running_file_streams = []
-
-    def start(self):
-        pass
 
     async def record_channel(self, channel):
         file_id = await self.record_stream(channel)
@@ -112,6 +107,8 @@ class Recorder(object):
             chat_message['created'] = datetime.utcnow()
             message = Message(**chat_message)
             await message.commit()
-            log.info('Message saved:Time={message.created} Channel={message.channel_id} User={message.user_id}({message.username})'.format(message=message))
+            log.info(
+                'Message saved:Time={message.created} Channel={message.channel_id} User={message.user_id}({message.username})'.format(
+                    message=message))
         except ValidationError as error:
             log.warn('Message not saved: {}'.format(chat_message))

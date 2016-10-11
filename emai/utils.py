@@ -1,6 +1,6 @@
 import logging
-from configparser import ConfigParser
 import sys
+from configparser import ConfigParser
 
 # Logging
 output_stream = sys.stderr

@@ -1,7 +1,7 @@
-from emai.persistence import Message, SampleSchema
-from emai.utils import config, log
 from bson import ObjectId
 from bson.errors import InvalidId
+from emai.persistence import Message, SampleSchema
+from emai.utils import config, log
 
 APP_SERVICE_KEY = 'emai_data_set_service'
 

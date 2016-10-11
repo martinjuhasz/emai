@@ -1,5 +1,6 @@
 from emai.services.training import Trainer
 
+
 class PredictionService(object):
     @staticmethod
     async def classify_messages(classifier, messages):

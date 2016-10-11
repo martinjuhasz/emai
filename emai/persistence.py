@@ -1,18 +1,19 @@
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFS
-from bson import json_util
+import datetime
+import json
+import re
+from functools import partial
+
 import gridfs
-from umongo import Instance, Document, EmbeddedDocument, fields, Schema, BaseSchema
-from marshmallow import fields as marshmallow_fields
-from umongo.abstract import BaseField
 import marshmallow
 from bson import ObjectId
+from bson import json_util
 from bson.errors import InvalidId
-import json
-from functools import partial
-from pymongo import MongoClient
-import re
 from marshmallow import fields as ma_fields
-import datetime
+from marshmallow import fields as marshmallow_fields
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFS
+from pymongo import MongoClient
+from umongo import Instance, Document, EmbeddedDocument, fields, Schema
+from umongo.abstract import BaseField
 
 db = AsyncIOMotorClient()['emai']
 instance = Instance(db)
@@ -32,6 +33,7 @@ def render_json(request, data):
 
 class MethodField(BaseField, marshmallow_fields.Method):
     pass
+
 
 async def load_json(request):
     text = await request.text()
@@ -106,6 +108,7 @@ class Performance(EmbeddedDocument):
 class Classifier(Document):
     class Meta:
         collection_name = 'classifiers'
+
     title = fields.StrField(required=True)
     training_sets = fields.ListField(fields.ObjectIdField())
     test_set = fields.ListField(fields.ObjectIdField(), load_only=True, dump_only=True)
@@ -120,7 +123,6 @@ class Classifier(Document):
         if self.train_set and len(self.train_set) >= 0:
             return True
         return False
-
 
     async def reset(self):
         reset_fields = ['state', 'performance', 'train_set', 'unlabeled_train_set']
@@ -172,7 +174,7 @@ class Message(Document):
     async def at_time(recording, until_time, last_message=None):
         max_datetime = recording.started + datetime.timedelta(seconds=until_time)
         channel_filter = {'channel_id': str(recording.channel_id)}
-        created_filter = {'created': {'$lt': max_datetime }}
+        created_filter = {'created': {'$lt': max_datetime}}
         id_filter = {}
         if last_message:
             id_filter = {'id': {'$gt': last_message}}
@@ -307,6 +309,7 @@ class Recording(Document):
             'neutral_messages': neutral_messages
         }
 
+
 class EmoticonSchema(Schema):
     identifier = fields.StrField(required=True)
     occurrences = fields.ListField(fields.StrField())
@@ -327,4 +330,3 @@ class SampleSchema(Schema):
     id = fields.DateTimeField()
     messages = fields.ListField(marshmallow.fields.Nested(MessageSchema))
     video_start = fields.IntegerField()
-

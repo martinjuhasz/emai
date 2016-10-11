@@ -1,4 +1,3 @@
-
 class ResourceUnavailableException(Exception):
     pass
 

@@ -1,16 +1,16 @@
 from datetime import datetime
+
+import aiohttp_cors
 from aiohttp_utils import Response
-from umongo import ValidationError
 from emai import services
 from emai.datasource import TwitchAPI
-from emai.persistence import Recording, Classifier, Message, load_json, to_objectid, get_async_file_descriptor
-from emai.utils import log, config
-from aiohttp.web import StreamResponse
+from emai.persistence import Recording, Classifier, Message, load_json, to_objectid
 from emai.services.datasets import DataSetService
-from emai.services.training import TrainingService
 from emai.services.prediction import PredictionService
-from emai.exceptions import ResourceExistsException, ResourceUnavailableException
-import aiohttp_cors
+from emai.services.training import TrainingService
+from emai.utils import log
+from umongo import ValidationError
+
 
 def setup(app):
     cors = aiohttp_cors.setup(
@@ -28,7 +28,8 @@ def setup(app):
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/stats', RecorderResource.stats))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
-    cors.add(app.router.add_route('GET', '/recordings/{recording_id}/messages/{time}', RecorderResource.messages_at_time))
+    cors.add(
+        app.router.add_route('GET', '/recordings/{recording_id}/messages/{time}', RecorderResource.messages_at_time))
 
     cors.add(app.router.add_route('PUT', '/messages', MessageResource.classify))
 
@@ -160,10 +161,8 @@ class RecorderResource(Resource):
 
 
 class MessageResource(Resource):
-
     @staticmethod
     async def classify(request):
-
         # check if malformed request
         body_data = await load_json(request)
         if not body_data or not 'messages' in body_data:
@@ -175,7 +174,6 @@ class MessageResource(Resource):
 
 
 class ClassifierResource(Resource):
-
     @staticmethod
     async def get(request):
         classifiers = await Classifier.find().to_list(None)
@@ -263,4 +261,3 @@ class ClassifierResource(Resource):
         except ValueError as error:
             log.error(error)
             return Response(status=400)
-

@@ -4,7 +4,7 @@ from aiohttp import web
 from aiohttp_utils import negotiation, path_norm
 from emai import persistence
 from emai import resources
-from emai.services import recording, datasets
+from emai.services import recording, message
 from emai.utils import config, log
 
 
@@ -12,7 +12,7 @@ def create_app(loop):
     app = web.Application(debug=True, loop=loop)
     resources.setup(app)  # add routing
     recording.setup(app, loop=loop)  # provide recorder service
-    datasets.setup(app, loop=loop)  # provide dataset service
+    message.setup(app, loop=loop)  # provide message service
     negotiation.setup(app, renderers=persistence.persistence_renderer())  # automatic json responses
     path_norm.setup(app)  # normalize paths
     return app

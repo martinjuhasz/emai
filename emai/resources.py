@@ -5,7 +5,7 @@ from aiohttp_utils import Response
 from emai import services
 from emai.datasource import TwitchAPI
 from emai.persistence import Recording, Classifier, Message, load_json, to_objectid
-from emai.services.datasets import DataSetService
+from emai.services.message import MessageService
 from emai.services.prediction import PredictionService
 from emai.services.training import TrainingService
 from emai.utils import log
@@ -111,7 +111,7 @@ class RecorderResource(Resource):
         if not recording:
             return Response(status=404)
 
-        bags = await DataSetService.get_samples(recording, interval)
+        bags = await MessageService.get_samples(recording, interval)
         return Response(bags)
 
     @staticmethod
@@ -168,7 +168,7 @@ class MessageResource(Resource):
         if not body_data or not 'messages' in body_data:
             return Response(status=400)
         messages = body_data['messages']
-        await DataSetService.classify_messages(messages)
+        await MessageService.classify_messages(messages)
 
         return Response()
 

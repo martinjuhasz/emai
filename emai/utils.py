@@ -1,3 +1,6 @@
+"""
+Konfiguration von Logging und einem Config-Objekt welches die config.ini ausliest.
+"""
 import logging
 import sys
 from configparser import ConfigParser

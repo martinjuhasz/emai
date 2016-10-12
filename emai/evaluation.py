@@ -1,3 +1,8 @@
+"""
+Dieses Script wurde zur Generierung der Evaluationsdaten und Plotten dieser zu PNG Graphen verwendet.
+Es wird unabhängig vom Server direkt gestartet.
+"""
+
 import asyncio
 
 import matplotlib
@@ -19,13 +24,56 @@ import numpy
 import click
 import pickle
 
-# evaluation_recording = ObjectId('578fbf877b958024092b8e63')  # RBTV
+
+"""
+Hier wird die Datenquelle zur Evaluation festgelegt. Die Aufnahme des Channels "Lassiz" wurde in der vorgelegten Arbeit
+verwendet.
+"""
 evaluation_recording = ObjectId('5798ea0a7b95805f6e4dc1b2')  # Lassiz
-
-
+# evaluation_recording = ObjectId('578fbf877b958024092b8e63')  # RBTV
 # evaluation_recording = ObjectId('57e4e64c7b9580154ffa49b7')  # Burke
 
+
+async def main():
+    """
+    Hier können die gewünschten Evaluationen auskommentiert werden.
+    """
+
+    # Vorverarbeitung
+    # await evaluate_preprocessing_stopwords()
+    # await evaluate_preprocessing_ngram()
+    # await evaluate_preprocessing_idf()
+
+    # Klassifikatoren und freie Parameter
+    # await evaluate_classifier_params()
+
+    # await evaluate_logreg_classifier()
+    # await evaluate_logreg_classifier_param_c()
+    # await  evaluate_logreg_classifier_param_tol()
+    # await evaluate_logreg_classifier_param_dual()
+    # await evaluate_logreg_classifier_param_solver()
+    # await evaluate_logreg_classifier_param_penalty()
+
+    # await evaluate_svm_classifier_param_c()
+    # await evaluate_svm_classifier_param_kernel()
+    # await evaluate_svm_classifier_param_gamma()
+
+    # await evaluate_nb_classifier_param_alpha()
+    # await evaluate_nb_classifier_param_prior()
+
+    # Active Learning
+    await evaluate_active_learning()
+    # await plot_last_active_learning()
+
+    pyplot.savefig('evaluation.png')
+    pyplot.show()
+    pyplot.close()
+
+
 async def mentor_messages(messages):
+    """
+    Command Line Interface zur Klassifikation von Nachrichten
+    """
     if not messages or len(messages) <= 0:
         return
     click.echo('Classify these messages:')
@@ -39,30 +87,45 @@ async def mentor_messages(messages):
 
 
 async def active_learning_curve(trainer, iterations, train_sizes, max_size):
+    """
+    Cross-Validation des Active Learning Alogirthmus.
+    :param trainer: Die zu evaluierende Trainer Instanz inklusive Klassifikator
+    :param iterations: Anzahl der Iterationen
+    :param train_sizes: Aufteilung der Folds
+    :param max_size: Maximale Trainingsmenge
+    """
+
     out = []
     train_sizes_abs = _translate_train_sizes(train_sizes, max_size)
     n_unique_ticks = train_sizes_abs.shape[0]
+
     for iteration in range(0, iterations):
-        # setup test set for classifier
+        # Trainier bei jeder Iteration neu starten
         await trainer.classifier.reset()
         trainer.reset()
+
+        # Testdaten erzeugen
         data_source = DataSource(trainer.classifier)
         trainer.classifier.test_set = await data_source.generate_test_data(limit=300, test_size=0.8)
 
+        # Testen des Klassifikators bei jeder gewünschten Foldgröße
         for train_size in train_sizes_abs:
+
+            # Active Learning anwenden bis Foldgröße erreicht ist
             while len(trainer.classifier.train_set) < train_size:
-                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=True,
-                                    randomize_step=False, interactive=False, learn_type=LearnType.LeastConfident)
-                click.echo("Status: {}/{} iterations, {}/{} folds, {}/{} train size".format(iteration + 1, iterations,
-                                                                                            train_size, n_unique_ticks,
-                                                                                            len(
-                                                                                                trainer.classifier.train_set),
-                                                                                            train_size))
+                await trainer.learn(save=False, test=False, max_learn_count=train_size, randomize=False,
+                                    randomize_step=False, interactive=True, learn_type=LearnType.LeastConfident)
+                click.echo("Status: {} iteration, {} size".format(iteration, train_size))
+
+                # Klassifizieren der notwendigen Nachrichten durch das Orkal
                 messages = await trainer.messages_for_mentoring()
                 await mentor_messages(messages)
+
+            # Speichern der Scores beim Erreichen der Foldgröße
             scores = await trainer.score()
             out.append(scores)
 
+    # Umformen der erhaltenen Scores fürs spätere Plotten
     out = numpy.array(out)
     n_cv_folds = out.shape[0] // n_unique_ticks
     out = out.reshape(n_cv_folds, n_unique_ticks, 2)
@@ -72,9 +135,11 @@ async def active_learning_curve(trainer, iterations, train_sizes, max_size):
 
 
 async def evaluate_active_learning():
+    """
+    Evaluiert und Plottet den Active Learning Algorithmus mit dem  LogisticRegression Klassifikator
+    """
     # setup dummy classifier to load sets
     classifier = Classifier()
-    classifier.title = "Active Learning Evaluator"
     classifier.training_sets = [evaluation_recording]
     classifier.type = ClassifierType.LogisticRegression.value
     classifier.settings = {
@@ -104,6 +169,9 @@ async def evaluate_active_learning():
 
 
 async def plot_last_active_learning():
+    """
+    Plottet nochmal den letzten Active Learning Vorgang anhand einer Dump Datei
+    """
     ylim = [0.3, 1.0]
 
     # start plotting
@@ -119,6 +187,9 @@ async def plot_last_active_learning():
 
 
 async def evaluate_preprocessing_stopwords():
+    """
+    Evaluiert und Plottet die Performance aller verfügbaren Klassifikatoren mit und ohne Stoppwörter
+    """
     # setup dummy classifier to load sets
     classifier = Classifier()
     classifier.training_sets = [evaluation_recording]
@@ -167,6 +238,9 @@ async def evaluate_preprocessing_stopwords():
 
 
 async def evaluate_preprocessing_ngram():
+    """
+    Evaluiert und Plottet die Performance aller verfügbaren Klassifikatoren mit verschiedenen NGramm Größen
+    """
     # setup dummy classifier to load sets
     classifier = Classifier()
     classifier.training_sets = [evaluation_recording]
@@ -218,6 +292,9 @@ async def evaluate_preprocessing_ngram():
 
 
 async def evaluate_preprocessing_idf():
+    """
+    Evaluiert und Plottet die Performance aller verfügbaren Klassifikatoren mit und ohne aktivierter IDF
+    """
     # setup dummy classifier to load sets
     classifier = Classifier()
     classifier.training_sets = [evaluation_recording]
@@ -262,6 +339,9 @@ async def evaluate_preprocessing_idf():
 
 
 async def evaluate_logreg_classifier():
+    """
+    Evaluiert und Plottet die Performance der Logistischen Regression
+    """
     # setup dummy classifier to load sets
     classifier = Classifier()
     classifier.training_sets = [evaluation_recording]
@@ -280,7 +360,6 @@ async def evaluate_logreg_classifier():
     figure.set_size_inches(7, 5)
 
     # Test Logistic Regression
-    # Test Preprocessing
     estimator = LogisticRegression(random_state=42, C=2)
     train_and_plot(figure, [1, 1, 1], Pipeline(prepro + [('cls', estimator)]), data, target,
                    "Default - Logistic Regression - C=2", cv, ylim=ylim)
@@ -288,7 +367,9 @@ async def evaluate_logreg_classifier():
     figure.tight_layout()
     print('ended')
 
-
+"""
+Testen und Plotten verschiedener Klassifikatoren und derer freier Parameter
+"""
 async def evaluate_logreg_classifier_param_c():
     # setup dummy classifier to load sets
     classifier = Classifier()
@@ -307,8 +388,7 @@ async def evaluate_logreg_classifier_param_c():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator025 = LogisticRegression(random_state=42, C=0.25)
     estimator05 = LogisticRegression(random_state=42, C=0.5)
     estimator1 = LogisticRegression(random_state=42)
@@ -347,8 +427,7 @@ async def evaluate_logreg_classifier_param_tol():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = LogisticRegression(random_state=42, tol=1e-10)
     estimator2 = LogisticRegression(random_state=42, tol=1e-5)
     estimator3 = LogisticRegression(random_state=42)
@@ -387,8 +466,7 @@ async def evaluate_logreg_classifier_param_dual():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = LogisticRegression(random_state=42)
     estimator2 = LogisticRegression(random_state=42, dual=True)
     train_and_plot(figure, [2, 3, 1], Pipeline(prepro + [('cls', estimator1)]), data, target,
@@ -417,8 +495,7 @@ async def evaluate_logreg_classifier_param_solver():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = LogisticRegression(random_state=42, solver='liblinear')
     estimator2 = LogisticRegression(random_state=42, solver='sag')
     estimator3 = LogisticRegression(random_state=42, solver='newton-cg')
@@ -453,8 +530,7 @@ async def evaluate_logreg_classifier_param_penalty():
     figure = pyplot.figure()
     figure.set_size_inches(13, 5)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = LogisticRegression(random_state=42, penalty='l2')
     estimator2 = LogisticRegression(random_state=42, penalty='l1')
     train_and_plot(figure, [1, 2, 1], Pipeline(prepro + [('cls', estimator1)]), data, target,
@@ -484,8 +560,7 @@ async def evaluate_svm_classifier_param_c():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator025 = SVC(kernel='linear', random_state=42, C=0.25)
     estimator05 = SVC(kernel='linear', random_state=42, C=0.5)
     estimator1 = SVC(kernel='linear', random_state=42)
@@ -525,8 +600,7 @@ async def evaluate_svm_classifier_param_gamma():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator0 = SVC(random_state=42, C=2)
     estimator1 = SVC(random_state=42, C=2, gamma=1e-2)
     estimator2 = SVC(random_state=42, C=2, gamma=0.1)
@@ -587,8 +661,7 @@ async def evaluate_svm_classifier_param_kernel():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = SVC(kernel='linear', random_state=42)
     estimator2 = SVC(kernel='poly', random_state=42)
     estimator3 = SVC(kernel='rbf', random_state=42)
@@ -622,8 +695,7 @@ async def evaluate_nb_classifier_param_alpha():
     figure = pyplot.figure()
     figure.set_size_inches(20, 10)
 
-    # Test Logistic Regression
-    # Test Preprocessing
+    # Test
     estimator1 = MultinomialNB(alpha=0.25)
     estimator2 = MultinomialNB(alpha=0.5)
     estimator3 = MultinomialNB(alpha=1)
@@ -661,8 +733,6 @@ async def evaluate_nb_classifier_param_prior():
     figure = pyplot.figure()
     figure.set_size_inches(13, 5)
 
-    # Test Logistic Regression
-    # Test Preprocessing
     estimator1 = MultinomialNB(fit_prior=True)
     estimator2 = MultinomialNB(fit_prior=False)
     train_and_plot(figure, [1, 2, 1], Pipeline(prepro + [('cls', estimator1)]), data, target,
@@ -711,6 +781,9 @@ async def evaluate_classifier_params():
 
 
 def plot_preprocessing(figure, position, classifiers, labels, colors, data, target, cv, title="", ylim=None):
+    """
+    Plottet die übergebenen Vorverarbeitungsdaten mit Hilfe der learning_curve Funktion von scikit
+    """
     axis = figure.add_subplot(*position)
     axis.set_xlabel('# Samples')
     axis.set_ylabel('Score')
@@ -730,6 +803,10 @@ def plot_preprocessing(figure, position, classifiers, labels, colors, data, targ
 
 
 def train_and_plot(figure, position, classifier, data, target, title, cv, ylim=None):
+    """
+    Trainiert die übergebenen Daten mit Hilfe der learning_curve Funktion von scikit und plottet die Ergebnisse
+    anschließend
+    """
     train_sizes, train_scores, test_scores = learning_curve(classifier, data, target, cv=cv, n_jobs=-1,
                                                             train_sizes=numpy.linspace(0.05, 1., 10))
     plot_learning_curve(figure, position, train_sizes, train_scores, test_scores, title=title, ylim=ylim)
@@ -762,44 +839,6 @@ def plot_learning_curve(figure, position, train_sizes, train_scores, test_scores
 
     # axis.legend(loc="lower right")
     axis.legend(loc="best")
-
-
-async def main():
-    # await evaluate_preprocessing_stopwords()
-    await evaluate_preprocessing_ngram()
-    # await evaluate_preprocessing_idf()
-
-    # await evaluate_logreg_classifier()
-    # await evaluate_logreg_classifier_param_c()
-    # await  evaluate_logreg_classifier_param_tol()
-    # await evaluate_logreg_classifier_param_dual()
-    # await evaluate_logreg_classifier_param_solver()
-    # await evaluate_logreg_classifier_param_penalty()
-
-    # await evaluate_svm_classifier_param_c()
-    # await evaluate_svm_classifier_param_kernel()
-    # await evaluate_svm_classifier_param_gamma()
-
-    # await evaluate_nb_classifier_param_alpha()
-    # await evaluate_nb_classifier_param_prior()
-
-    # await evaluate_classifier_params()
-
-    # await evaluate_active_learning()
-    # await plot_last_active_learning()
-
-    pyplot.savefig('data.png')
-    pyplot.show()
-    pyplot.close()
-
-    # for i in range(0, 10):
-    #     # await evaluate_logreg_classifier()
-    #     await evaluate_active_learning()
-    #     pyplot.savefig('data-{}.png'.format(i))
-    #     pyplot.show()
-    #     pyplot.clf()
-    # pyplot.close()
-
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

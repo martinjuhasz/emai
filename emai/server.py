@@ -1,24 +1,34 @@
+"""
+Startpunkt des Anwendungsservers. Initialisert die EventLoop und übergibt den aiohttp Webserver dieser
+"""
 import asyncio
 
 from aiohttp import web
 from aiohttp_utils import negotiation, path_norm
 from emai import persistence
 from emai import resources
-from emai.services import recording, message
+from emai.services import recording
 from emai.utils import config, log
 
 
 def create_app(loop):
+    """
+    Erstellt den aiohttp Webserver und registriert Resourcen und Services bei diesem.
+    :param loop: EventLoop
+    :return: aiohttp Webserver
+    """
     app = web.Application(debug=True, loop=loop)
     resources.setup(app)  # add routing
     recording.setup(app, loop=loop)  # provide recorder service
-    message.setup(app, loop=loop)  # provide message service
     negotiation.setup(app, renderers=persistence.persistence_renderer())  # automatic json responses
     path_norm.setup(app)  # normalize paths
     return app
 
 
 def main():
+    """
+    Startet die EventLoop mit Webserver
+    """
     loop = asyncio.get_event_loop()
     loop.set_debug(True)
 

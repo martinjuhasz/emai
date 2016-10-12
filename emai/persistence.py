@@ -1,3 +1,6 @@
+"""
+Dieses Modul stellt alle Models der Businesslogik bereit und stellt die Verbindung dieser zur MongoDB Datenbank bereit.
+"""
 import datetime
 import json
 import re
@@ -15,6 +18,9 @@ from pymongo import MongoClient
 from umongo import Instance, Document, EmbeddedDocument, fields, Schema
 from umongo.abstract import BaseField
 
+"""
+Initiale Datenbankverbindung und Hilfsfunktionen
+"""
 db = AsyncIOMotorClient()['emai']
 instance = Instance(db)
 
@@ -29,10 +35,6 @@ def render_json(request, data):
     dumps = partial(json.dumps, cls=MongoJsonEncoder, indent=True)
     json_string = dumps(data)
     return json_string.encode('utf-8')
-
-
-class MethodField(BaseField, marshmallow_fields.Method):
-    pass
 
 
 async def load_json(request):
@@ -155,6 +157,9 @@ class Message(Document):
 
     @staticmethod
     async def get_random(channel_filter, label=None, amount=1):
+        """
+        Gibt zufällige Nachrichten der gewünschten Kanäle zurück
+        """
         if label is None:
             label_filter = {}
         elif label is False:
@@ -172,6 +177,9 @@ class Message(Document):
 
     @staticmethod
     async def at_time(recording, until_time, last_message=None):
+        """
+        Gibt Nachrichten eines Kanals zum gewünschten Zeitpunkt zurück
+        """
         max_datetime = recording.started + datetime.timedelta(seconds=until_time)
         channel_filter = {'channel_id': str(recording.channel_id)}
         created_filter = {'created': {'$lt': max_datetime}}
@@ -198,6 +206,9 @@ class Message(Document):
 
     @staticmethod
     def find_sample(recording, interval, limit=None, samples=None):
+        """
+        Aggregiert Chatnachrichten eines zufälligen Zeitfensters mit dem gewünschten Zeitintervall.
+        """
         interval_milli = interval * 1000
         pipeline = [
             {'$match': {
@@ -245,39 +256,6 @@ class Message(Document):
 
         future = Message.collection.aggregate(pipeline)
         return future
-
-    @staticmethod
-    def clusters(recording, interval, limit=None):
-        interval_milli = interval * 1000
-        pipeline = [
-            {'$match': {
-                'channel_id': str(recording.channel_id),
-                'created': {'$gte': recording.started, '$lt': recording.stopped}
-            }},
-            {'$group': {
-                '_id': {
-                    '$subtract': [
-                        '$created',
-                        {'$mod': [{'$subtract': ['$created', recording.started]}, interval_milli]}
-                    ]
-                },
-                'messages': {
-                    '$push': '$_id'
-                }
-            }},
-            {'$project': {
-                '_id': 0,
-                'id': '$_id',
-                'messages': {'$size': "$messages"}
-            }},
-            {'$sort': {'messages': -1}}
-        ]
-        if limit:
-            pipeline.append({'$limit': limit})
-
-        future = Message.collection.aggregate(pipeline)
-        return future
-
 
 @instance.register
 class Recording(Document):

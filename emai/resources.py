@@ -1,3 +1,6 @@
+"""
+Dieses Modul stellt die API Resourcen und deren Endpunkte des Anwendungsservers bereit.
+"""
 from datetime import datetime
 
 import aiohttp_cors
@@ -13,6 +16,10 @@ from umongo import ValidationError
 
 
 def setup(app):
+    """
+    Konfiguriert den aiohttp Webserver mit allen benötigten API Endpunkten.
+    :param app: aiohttp anwendung
+    """
     cors = aiohttp_cors.setup(
         app,
         defaults={
@@ -100,6 +107,9 @@ class RecorderResource(Resource):
 
     @staticmethod
     async def samples(request):
+        """
+        Gibt zufällige Zeitfenster (interval) von Chatnachrichten einer Aufnahme (recording_id) zurück
+        """
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
         interval = int(request.match_info['interval'])
@@ -116,6 +126,9 @@ class RecorderResource(Resource):
 
     @staticmethod
     async def messages_at_time(request):
+        """
+        Gibt Chatnachrichten einer Aufnahme zu einem gegebenen Zeitpunkt zurück
+        """
         # check url parameters
         recording_id = to_objectid(request.match_info['recording_id'])
         time = int(request.match_info['time'])
@@ -163,6 +176,9 @@ class RecorderResource(Resource):
 class MessageResource(Resource):
     @staticmethod
     async def classify(request):
+        """
+        Klassifiziert übergebene Chatnachrichten mit den angegebenen Kategorien.
+        """
         # check if malformed request
         body_data = await load_json(request)
         if not body_data or not 'messages' in body_data:
@@ -198,6 +214,9 @@ class ClassifierResource(Resource):
 
     @staticmethod
     async def update(request):
+        """
+        Aktualisiert die Einstellungen eines Klassifikators mit den übergebenen Parametern.
+        """
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:
@@ -221,6 +240,11 @@ class ClassifierResource(Resource):
 
     @staticmethod
     async def train(request):
+        """
+        Trainiert einen Klassifikator mit zufälligen Trainingsbeispielen bis hin zur angegebenen Grenze.
+        :param request:
+        :return:
+        """
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:
@@ -246,6 +270,10 @@ class ClassifierResource(Resource):
 
     @staticmethod
     async def learn(request):
+        """
+        Trainiert einen Klassifikator mittels Active Learning und gibt die nächsten zu klassifizierenden
+        Chatnachrichten zurück.
+        """
         # check url parameters
         classifier_id = to_objectid(request.match_info['classifier_id'])
         if not classifier_id:

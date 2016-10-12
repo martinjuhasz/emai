@@ -1,3 +1,6 @@
+"""
+Dieses Service-Modul stellt alle Funktionalitäten für das Konfigurieren und Trainieren eines Klassifikators bereit
+"""
 import math
 import pickle
 import re
@@ -32,6 +35,52 @@ class LearnType(Enum):
     MostInformative = 2
 
 
+class TrainingService(object):
+    @staticmethod
+    async def update_classifier(classifier, new_data):
+        """
+        Aktualisieren der Klassifikator-Einstellungen
+        """
+        if 'training_sets' in new_data:
+            classifier.training_sets = [ObjectId(r_id) for r_id in new_data['training_sets']]
+
+        if 'type' in new_data and ClassifierType(new_data['type']):
+            classifier.type = new_data['type']
+
+        if 'settings' in new_data:
+            if any(setting in new_data['settings'] for setting in ('ngram_range', 'stop_words', 'idf')):
+                classifier.settings = new_data['settings']
+
+        # Erstellung eines neuen Testsets
+        data_source = DataSource(classifier)
+        classifier.test_set = await data_source.generate_test_data()
+
+        await classifier.commit()
+        await classifier.reset()
+
+    @staticmethod
+    async def train(classifier, train_count=None):
+        """
+        Trainieren eines Klassifikators mit zufälligen Trainingsdaten
+        """
+        trainer = Trainer(classifier)
+        trainer.ensure_configured()
+
+        await trainer.train_until(train_count, test_iterative=True)
+
+    @staticmethod
+    async def learn(classifier):
+        """
+        Trainieren eines Klassifikators mit Active Learning
+        """
+        trainer = Trainer(classifier)
+        trainer.ensure_configured()
+
+        await trainer.learn()
+
+        return await trainer.messages_for_mentoring()
+
+
 class PreProcessing(object):
     stop_words = ['aber', 'als', 'am', 'an', 'auch', 'auf', 'aus', 'bei', 'bin', 'bis', 'bist', 'da', 'dadurch',
                   'daher', 'darum', 'das', 'daß', 'dass', 'dein', 'deine', 'dem', 'den', 'der', 'des', 'dessen',
@@ -61,10 +110,6 @@ class PreProcessing(object):
                   "you're", "you've", "your", "yours", "yourself", "yourselves"]
 
     @staticmethod
-    def transformation(text):
-        return text
-
-    @staticmethod
     def max_feature_count(count_vectorizer, min_occurences, train_data):
         vocabulary_matrix = count_vectorizer.fit_transform(train_data)
         vocabulary_count = np.asarray(vocabulary_matrix.sum(axis=0)).ravel()
@@ -72,214 +117,10 @@ class PreProcessing(object):
         return len(vocabulary_count) - excluded
 
 
-class DataSource(object):
-    def __init__(self, classifier):
-        self.classifier = classifier
-        self.informative_stack = None
-
-    @staticmethod
-    def entropy(data):
-        if data is None:
-            return 0
-        entropy = 0
-        for p_x in data:
-            if p_x > 0:
-                entropy += - p_x * math.log(p_x, 2)
-        return entropy
-
-    async def get_sample_train_set(self, amount=9):
-        amount = math.ceil(amount / 3)
-        channel_filter = await self.create_channel_filter()
-        positive = await Message.get_random(channel_filter, 3, amount)
-        negative = await Message.get_random(channel_filter, 2, amount)
-        neutral = await Message.get_random(channel_filter, 1, amount)
-        ids = [message.id for message in positive + negative + neutral]
-        return ids
-
-    async def get_max_train_count(self):
-        channel_filter = await self.create_channel_filter()
-        message_filter = {**{'$or': channel_filter}, **{'label': {'$exists': True}}}
-        return await Message.find(message_filter).count()
-
-    async def random_message(self, interactive=False):
-        channel_filter = await self.create_channel_filter()
-        label = randint(1, 3) if not interactive else None
-        messages = await Message.get_random(channel_filter, label)
-        return messages[0]
-
-    async def generate_informative_messages(self, interactive=False):
-        # load vocabulary data
-        vocabulary_cursor = await self.generate_vocabulary_data(include_unlabeled=interactive)
-        vocabulary_data, vocabulary_target = await self.load_data(vocabulary_cursor)
-
-        # setup count vectorizer
-        ngram_range = (1, self.classifier.settings['ngram_range'])
-        stop_words = PreProcessing.stop_words if self.classifier.settings['stop_words'] else None
-        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
-
-        # transform to sorted vocabulary
-        vocabulary_matrix = count_vectorizer.fit_transform(vocabulary_data)
-        vocabulary = sorted(
-            list(zip(count_vectorizer.get_feature_names(), np.asarray(vocabulary_matrix.sum(axis=0)).ravel().tolist())),
-            key=lambda item: item[1], reverse=True)
-
-        # search for messages that contain 1/3 top vocabulary
-        top_searches = [re.compile(token, re.I) for token, token_count in vocabulary[:10]]
-        channel_filter = await self.create_channel_filter()
-        label_filter = {} if interactive else {'label': {'$exists': True}}
-        message_cursor = Message.find({**{'$or': channel_filter, 'content': {'$in': top_searches}}, **label_filter})
-        self.informative_stack = message_cursor
-
-    async def most_informative(self, interactive=False):
-        if not self.informative_stack:
-            await self.generate_informative_messages(interactive=interactive)
-
-        if await self.informative_stack.fetch_next:
-            msg = self.informative_stack.next_object()
-            return msg
-        else:
-            return None
-
-    async def least_confident_message(self, estimator, interactive=False):
-        messages = await self.generate_review_data(include_unlabeled=interactive)
-        messages_data = [message.content for message in messages]
-
-        classifier_type = ClassifierType(self.classifier.type)
-        if classifier_type == ClassifierType.NaiveBayes:
-            confidences = np.abs(estimator.decision_function(messages_data))
-        else:
-            confidences = estimator.predict_proba(messages_data)
-        indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        # sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
-        sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
-        return messages[sorted_confidences[-1][0]]
-
-        # confidences = np.abs(estimator.decision_function(messages_data))
-        # average_confidences = np.average(confidences, axis=1)
-        # sorted_confidences = np.argsort(average_confidences)
-        # return messages[sorted_confidences[0]]
-
-        # confidences = np.abs(estimator.decision_function(messages_data))
-        # indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
-        # sorted_confidences = sorted(indexed_confidences, key=lambda value: DataSource.entropy(value[1]))
-        # return messages[sorted_confidences[-1][0]]
-
-        # confidences = estimator.predict_proba(messages_data)
-        # sorted_confidences = sorted(confidences, key=lambda value: np.abs(np.average(value) - 0.5))
-        # return messages[sorted_confidences[-1]]
-
-    async def generate_vocabulary_data(self, include_unlabeled=False):
-        channel_filter = await self.create_channel_filter()
-        id_filter = self.classifier.test_set
-        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
-        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
-        return Message.find(complete_filter)
-
-    async def generate_review_data(self, include_unlabeled=False):
-        channel_filter = await self.create_channel_filter()
-        id_filter = self.classifier.test_set + self.classifier.train_set + self.classifier.unlabeled_train_set
-        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
-        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
-        review_cursor = Message.find(complete_filter).limit(10000)
-        review_count = await review_cursor.count()
-        log.info('Review Data loaded: {} documents'.format(review_count))
-        return await review_cursor.to_list(None)
-
-    async def generate_test_data(self, test_size=0.5, limit=None):
-        channel_filter = await self.create_channel_filter()
-
-        # calc max count
-        all_count = await Message.find({'$or': channel_filter}).count()
-        max_count = None
-        if test_size and limit:
-            max_count = min(all_count, limit) * test_size
-        elif test_size and not limit:
-            max_count = all_count * test_size
-        elif not test_size and limit:
-            max_count = min(all_count, limit)
-
-        positive = await Message.find_random({'$or': channel_filter, 'label': 3}, amount=max_count)
-        negative = await Message.find_random({'$or': channel_filter, 'label': 2}, amount=max_count)
-        neutral = await Message.find_random({'$or': channel_filter, 'label': 1}, amount=max_count)
-        data = [message.id for message in positive + negative + neutral]
-        return data
-
-        positive_cursor = Message.find({'$or': channel_filter, 'label': 3}).limit(max_count)
-        negative_cursor = Message.find({'$or': channel_filter, 'label': 2}).limit(max_count)
-        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1}).limit(max_count)
-
-        positive_count = await positive_cursor.count()
-        negative_count = await negative_cursor.count()
-        neutral_count = await neutral_cursor.count()
-        total_count = positive_count + negative_count + neutral_count
-        log.info('Test Data loaded: Total/Labeled: {}/{} Positive: ~{}% Negative: ~{}% Neutral: ~{}%'.format(all_count,
-                                                                                                             total_count,
-                                                                                                             int(
-                                                                                                                 100 / total_count * positive_count),
-                                                                                                             int(
-                                                                                                                 100 / total_count * negative_count),
-                                                                                                             int(
-                                                                                                                 100 / total_count * neutral_count)))
-
-        positives = [message.id for message in await positive_cursor.to_list(None)]
-        negatives = [message.id for message in await negative_cursor.to_list(None)]
-        neutrals = [message.id for message in await neutral_cursor.to_list(None)]
-
-        data = neutrals + negatives + positives
-        target = [0] * neutral_count + [1] * negative_count + [2] * positive_count
-        train_data, test_data, train_target, test_target = cross_validation.train_test_split(data, target,
-                                                                                             test_size=test_size,
-                                                                                             random_state=17)
-        return test_data
-
-    async def generate_fixed_evaluation_data(self, limit=None):
-        channel_filter = await self.create_channel_filter()
-        positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
-        negative_cursor = Message.find({'$or': channel_filter, 'label': 2})
-        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1})
-
-        positive_count = await positive_cursor.count()
-        negative_count = await negative_cursor.count()
-        neutral_count = await neutral_cursor.count()
-
-        positives = await positive_cursor.to_list(limit)
-        negatives = await negative_cursor.to_list(limit)
-        neutrals = await neutral_cursor.to_list(limit)
-
-        shuffled = neutrals + negatives + positives
-        shuffle(shuffled)
-
-        data = [message.content for message in shuffled]
-        target = [message.label - 1 for message in shuffled]
-        return data, target
-
-    async def create_channel_filter(self):
-        future = Recording.find({'_id': {'$in': self.classifier.training_sets}})
-        recordings = await future.to_list(None)
-        return [
-            {'channel_id': str(recording.channel_id), 'created': {'$gte': recording.started, '$lt': recording.stopped}}
-            for recording in recordings]
-
-    async def load_test_data(self):
-        message_cursor = Message.find({'_id': {'$in': self.classifier.test_set}})
-        return await DataSource.load_data(message_cursor)
-
-    async def load_train_data(self):
-        message_cursor = Message.find({'_id': {'$in': self.classifier.train_set}})
-        return await DataSource.load_data(message_cursor)
-
-    @staticmethod
-    async def load_data(data_cursor):
-        data = []
-        target = []
-        async for message in data_cursor:
-            data.append(message.content)
-            target.append(message.label - 1)
-
-        return data, target
-
-
 class Trainer(object):
+    """
+    Erstellt und kontrolliert die Trainingsvorgänge eines Klassifikatorobjektes.
+    """
     def __init__(self, classifier):
         self.classifier = classifier
 
@@ -326,13 +167,16 @@ class Trainer(object):
         self.classifier.train_set = await self.datasource.get_sample_train_set()
 
     async def train(self):
+        """
+        Trainiert einen Scitit-Klassifikator anhand der des Klassifikatorobjekts aus der Datenbank
+        """
         self.ensure_configured()
         await self.ensure_train_set()
 
-        # generate classifier data
+        # Trainingsdaten laden
         train_data, train_target = await self.datasource.load_train_data()
 
-        # configure pipeline
+        # Pipeline erstellen
         ngram_range = (1, self.classifier.settings['ngram_range'])
         stop_words = PreProcessing.stop_words if self.classifier.settings['stop_words'] else None
         count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
@@ -340,12 +184,14 @@ class Trainer(object):
         estimator = self.choose_estimator()
         pipeline = Pipeline([('vect', count_vectorizer), ('tfidf', tfidf_tranformer), ('cls', estimator)])
 
-        # train estimators
+        # Klassifikator trainieren und in Property sichern
         pipeline.fit(train_data, train_target)
-
         self.estimator = pipeline
 
     def choose_estimator(self):
+        """
+        Gibt den passenden Klassifikator anhand der Einstellungen zurück
+        """
         classifier_type = ClassifierType(self.classifier.type)
         if classifier_type == ClassifierType.LogisticRegression:
             return LogisticRegression(random_state=42, C=2)
@@ -355,24 +201,38 @@ class Trainer(object):
             return MultinomialNB(alpha=0.5)
 
     async def save(self):
+        """
+        Speichert den Zustand eines trainierten Scikit Klassifikator im Datenbankobjekt ab
+        """
         classifier_state = pickle.dumps(self.estimator)
         self.classifier.state = classifier_state
         await self.classifier.commit()
 
     def load(self):
+        """
+        Lädt den Zustand eines Scikit Klassifikator vom Datenbankobjekt
+        """
         if self.classifier.state and not self.estimator:
             self.estimator = pickle.loads(self.classifier.state)
 
     def is_waiting_for_mentoring(self):
-        # cannot learn since next messages need to be labeled first
+        """
+        Gibt zurück ob ein Klassifikator noch ungelabelte Chatnachrichten seitens des Orkakels besitzt
+        """
         if self.classifier.unlabeled_train_set and len(self.classifier.unlabeled_train_set) >= 0:
             return True
         return False
 
     def add_for_mentoring(self, message_id):
+        """
+        Fügt Nachrichten dem Stack der zu labelnden Chatnachrichten durch das Orakel hinzu
+        """
         self.classifier.unlabeled_train_set.append(message_id)
 
     async def check_for_mentoring(self):
+        """
+        Prüft ob zu labelnde Chatnachrichten zwischenzeitlich klassifiziert wurden und bewegt diese ins Trainingsset.
+        """
         newly_labeled = []
         for message_id in self.classifier.unlabeled_train_set:
             message = await Message.find_one({'id': message_id})
@@ -383,6 +243,9 @@ class Trainer(object):
         self.classifier.unlabeled_train_set = new_unlabeled_set
 
     async def train_until(self, train_count, test_iterative=False):
+        """
+        Trainiert einen Klassifikator bis zu einer bestimmten Trainingsmengengröße
+        """
         if not train_count:
             train_count = await self.datasource.get_max_train_count()
 
@@ -391,8 +254,8 @@ class Trainer(object):
             return
 
         add_train_set = await self.datasource.get_sample_train_set(amount=train_count - current_train_count)
+        # Nach jedem einzelnen Sample testen
         if test_iterative:
-
             for train_set in add_train_set:
                 self.classifier.train_set.append(train_set)
                 try:
@@ -409,7 +272,17 @@ class Trainer(object):
 
     async def learn(self, test=True, save=True, max_learn_count=None, randomize=False, randomize_step=False,
                     interactive=True, learn_type=LearnType.LeastConfident):
-        # check first if some mentoring was done or if mentoring is needed
+        """
+        Trainiert einen Klassifikator mit Hilfe von Active Learning bis Nachrichten vom Orakel klassifiziert werden müssen
+        :param test: Soll der Klassifikator getestet werden
+        :param save: Soll der Zustand gespeichert werden
+        :param max_learn_count: maximale Anzahl an Trainingsdaten
+        :param randomize: Sollen zufällige Trainingsdaten eingestreut werden
+        :param randomize_step: Wie oft sollen zufällige Trainingsdaten eingestreut werden
+        :param interactive: Sollen auch ungelabelte Trainingsdaten miteinbezogen werden
+        :param learn_type: Typ des Active Learning Algorithmus: default: LeastConfident -> Uncertainty Sampling
+        """
+        # Abbrechen wenn noch ungelabelte Chatnachrichten vorliegen
         await self.check_for_mentoring()
         if self.is_waiting_for_mentoring():
             return
@@ -418,31 +291,34 @@ class Trainer(object):
         if test:
             await self.test()
 
-        # learn continuous while prelabeled data exists
+        # iterativ trainieren solange gelabelte Trainingsdaten existieren
         randomize_counter = 1
         while not self.is_waiting_for_mentoring():
+            # Abruch wenn maximale Trainingsgrenze erreicht ist
             if max_learn_count and len(self.classifier.train_set) > max_learn_count:
                 break
 
-            # check if next message needs mentoring
+            # Active Learning anwenden, wenn kein randomize aktiviert ist
             if not randomize or (randomize and randomize_step and randomize_counter % randomize_step == 0):
                 if learn_type == LearnType.LeastConfident:
                     next_message = await self.datasource.least_confident_message(self.estimator,
                                                                                  interactive=interactive)
                 else:
                     next_message = await self.datasource.most_informative(interactive=interactive)
+            # ansonsten zufällige Nachricht auswählen
             else:
                 next_message = await self.datasource.random_message(interactive=interactive)
 
-            # break if no messages are left to train
+            # Abbruch wenn es keine Nachrichten mehr gibt
             if not next_message:
                 break
 
+            # Nachricht dem Orakel vorlegen falls kein Label existiert
             if not next_message.label:
                 self.add_for_mentoring(next_message.id)
                 continue
 
-            # update classifier with new message
+            # Ansonsten Nachricht dem Trainingsset hinzufügen und trainieren
             randomize_counter += 1
             self.classifier.train_set.append(next_message.id)
             await self.train()
@@ -453,6 +329,9 @@ class Trainer(object):
             await self.save()
 
     async def messages_for_mentoring(self):
+        """
+        Gibt alle Nachrichten zurück die noch vom Orkal klassifiziert werden müssen.
+        """
         if not self.is_waiting_for_mentoring():
             return None
 
@@ -460,6 +339,10 @@ class Trainer(object):
         return await cursor.to_list(None)
 
     async def test(self):
+        """
+        Testet den Klassifikator auf verschiedene Scores und speichert diese im Klassifikatorobjekt
+        :return:
+        """
         if not self.test_data or not self.test_target:
             self.test_data, self.test_target = await self.datasource.load_test_data()
 
@@ -490,6 +373,10 @@ class Trainer(object):
         self.classifier.performance.positive.support.append(support[2].item())
 
     async def score(self):
+        """
+        Trifft eine Vorhersage für Trainings- und Testdaten des Klassifikators
+        :return:
+        """
         if not self.test_data or not self.test_target:
             self.test_data, self.test_target = await self.datasource.load_test_data()
         train_data, train_target = await self.datasource.load_train_data()
@@ -499,38 +386,205 @@ class Trainer(object):
         return scores
 
 
-class TrainingService(object):
-    @staticmethod
-    async def update_classifier(classifier, new_data):
-        if 'training_sets' in new_data:
-            classifier.training_sets = [ObjectId(r_id) for r_id in new_data['training_sets']]
-
-        if 'type' in new_data and ClassifierType(new_data['type']):
-            classifier.type = new_data['type']
-
-        if 'settings' in new_data:
-            if any(setting in new_data['settings'] for setting in ('ngram_range', 'stop_words', 'idf')):
-                classifier.settings = new_data['settings']
-
-        # generate new test set
-        data_source = DataSource(classifier)
-        classifier.test_set = await data_source.generate_test_data()
-
-        await classifier.commit()
-        await classifier.reset()
+class DataSource(object):
+    """
+    Stellt die Datenquelle für alle Operationen mit Klassifikatoren bereit. Nutzt die Persistenzschicht zur Aggregation
+    der Daten und formt diese zur Verwendung mit den scikit Klassen um.
+    """
+    def __init__(self, classifier):
+        self.classifier = classifier
+        self.informative_stack = None
 
     @staticmethod
-    async def train(classifier, train_count=None):
-        trainer = Trainer(classifier)
-        trainer.ensure_configured()
+    def entropy(data):
+        if data is None:
+            return 0
+        entropy = 0
+        for p_x in data:
+            if p_x > 0:
+                entropy += - p_x * math.log(p_x, 2)
+        return entropy
 
-        await trainer.train_until(train_count, test_iterative=True)
+    async def get_sample_train_set(self, amount=9):
+        """
+        Stellt ein Startset an Trainingsdaten bereit
+        """
+        amount = math.ceil(amount / 3)
+        channel_filter = await self.create_channel_filter()
+        positive = await Message.get_random(channel_filter, 3, amount)
+        negative = await Message.get_random(channel_filter, 2, amount)
+        neutral = await Message.get_random(channel_filter, 1, amount)
+        ids = [message.id for message in positive + negative + neutral]
+        return ids
+
+    async def get_max_train_count(self):
+        """
+        Zählt die verfügbaren Chatnachrichten mit Labeln
+        """
+        channel_filter = await self.create_channel_filter()
+        message_filter = {**{'$or': channel_filter}, **{'label': {'$exists': True}}}
+        return await Message.find(message_filter).count()
+
+    async def random_message(self, interactive=False):
+        channel_filter = await self.create_channel_filter()
+        label = randint(1, 3) if not interactive else None
+        messages = await Message.get_random(channel_filter, label)
+        return messages[0]
+
+    async def generate_informative_messages(self, interactive=False):
+        """
+        Generiert eine Liste mit Chatnachrichten die häufig genutzt Wörter enthalten.
+        """
+        # load vocabulary data
+        vocabulary_cursor = await self.generate_vocabulary_data(include_unlabeled=interactive)
+        vocabulary_data, vocabulary_target = await self.load_data(vocabulary_cursor)
+
+        # setup count vectorizer
+        ngram_range = (1, self.classifier.settings['ngram_range'])
+        stop_words = PreProcessing.stop_words if self.classifier.settings['stop_words'] else None
+        count_vectorizer = CountVectorizer(ngram_range=ngram_range, stop_words=stop_words)
+
+        # transform to sorted vocabulary
+        vocabulary_matrix = count_vectorizer.fit_transform(vocabulary_data)
+        vocabulary = sorted(
+            list(zip(count_vectorizer.get_feature_names(), np.asarray(vocabulary_matrix.sum(axis=0)).ravel().tolist())),
+            key=lambda item: item[1], reverse=True)
+
+        # search for messages with top 10 vocabulary
+        top_searches = [re.compile(token, re.I) for token, token_count in vocabulary[:10]]
+        channel_filter = await self.create_channel_filter()
+        label_filter = {} if interactive else {'label': {'$exists': True}}
+        message_cursor = Message.find({**{'$or': channel_filter, 'content': {'$in': top_searches}}, **label_filter})
+        self.informative_stack = message_cursor
+
+    async def most_informative(self, interactive=False):
+        """
+        Gibt eine Nachricht zurück die Wörter enthält die häufig im Dokumentenraum vorkommen.
+        Wurde nicht evaluiert oder in der Arbeit erwähnt.
+        """
+        if not self.informative_stack:
+            await self.generate_informative_messages(interactive=interactive)
+
+        if await self.informative_stack.fetch_next:
+            msg = self.informative_stack.next_object()
+            return msg
+        else:
+            return None
+
+    async def least_confident_message(self, estimator, interactive=False):
+        """
+        Gibt eine Nachricht mit hohem Informationsgehalt zurück, ermittelt durch den höchsten
+        Entropiewert von Vorhersagen aller Chatnachrichten des gesetzten Klassifikators
+        """
+
+        # Chatnachrichten die nicht bereits in Test- und Trainingsmenge enthalten sind
+        # messages = Chatnachrichten der recordings des klassifikators - test_set - train_set - unlabeled_train_set
+        messages = await self.generate_review_data(include_unlabeled=interactive)
+        messages_data = [message.content for message in messages]
+
+        # Vorhersagen auf Chatdaten
+        classifier_type = ClassifierType(self.classifier.type)
+        if classifier_type == ClassifierType.NaiveBayes:
+            confidences = np.abs(estimator.decision_function(messages_data))
+        else:
+            confidences = estimator.predict_proba(messages_data)
+
+        # Sortieren mit Entropy und zurückgeben des höchsten Wertes
+        indexed_confidences = [(i, e) for i, e in enumerate(confidences)]
+        sorted_confidences = sorted(indexed_confidences, key=lambda value: scipy.stats.entropy(value[1]))
+        return messages[sorted_confidences[-1][0]]
+
+    async def generate_vocabulary_data(self, include_unlabeled=False):
+        '''
+        Erstellt eine Liste aller Chatnachrichten der Recordings des Klassifikators
+        '''
+        channel_filter = await self.create_channel_filter()
+        id_filter = self.classifier.test_set
+        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
+        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
+        return Message.find(complete_filter)
+
+    async def generate_review_data(self, include_unlabeled=False):
+        """
+        Erstellt eine Liste aller Chatnachrichten der Recordings des Klassifikators die nicht bereits im Test- oder
+        Trainingsset enthalten sind.
+        """
+        channel_filter = await self.create_channel_filter()
+        id_filter = self.classifier.test_set + self.classifier.train_set + self.classifier.unlabeled_train_set
+        label_filter = {} if include_unlabeled else {'label': {'$exists': True}}
+        complete_filter = {**{'$or': channel_filter, '_id': {'$nin': id_filter}}, **label_filter}
+        review_cursor = Message.find(complete_filter).limit(10000)
+        review_count = await review_cursor.count()
+        log.info('Review Data loaded: {} documents'.format(review_count))
+        return await review_cursor.to_list(None)
+
+    async def generate_test_data(self, test_size=0.5, limit=None):
+        """
+        Erstellt eine Teilmenge der zur Verfügung stehenden Testmenge aus den konfigurierten Recordings des Klassifikators.
+        """
+        channel_filter = await self.create_channel_filter()
+
+        # calc max count
+        all_count = await Message.find({'$or': channel_filter}).count()
+        max_count = None
+        if test_size and limit:
+            max_count = min(all_count, limit) * test_size
+        elif test_size and not limit:
+            max_count = all_count * test_size
+        elif not test_size and limit:
+            max_count = min(all_count, limit)
+
+        positive = await Message.find_random({'$or': channel_filter, 'label': 3}, amount=max_count)
+        negative = await Message.find_random({'$or': channel_filter, 'label': 2}, amount=max_count)
+        neutral = await Message.find_random({'$or': channel_filter, 'label': 1}, amount=max_count)
+        data = [message.id for message in positive + negative + neutral]
+        return data
+
+    async def generate_fixed_evaluation_data(self, limit=None):
+        """
+        Erstellt eine Testmenge aus den konfigurierten Recordings des Klassifikators.
+        """
+        channel_filter = await self.create_channel_filter()
+        positive_cursor = Message.find({'$or': channel_filter, 'label': 3})
+        negative_cursor = Message.find({'$or': channel_filter, 'label': 2})
+        neutral_cursor = Message.find({'$or': channel_filter, 'label': 1})
+
+        positives = await positive_cursor.to_list(limit)
+        negatives = await negative_cursor.to_list(limit)
+        neutrals = await neutral_cursor.to_list(limit)
+
+        shuffled = neutrals + negatives + positives
+        shuffle(shuffled)
+
+        data = [message.content for message in shuffled]
+        target = [message.label - 1 for message in shuffled]
+        return data, target
+
+    async def create_channel_filter(self):
+        """
+        Erstellt einen Filter für Chatnachrichten anhand aller Recordings die für den gesetzten Klassifikator
+        ausgewählt wurden
+        """
+        future = Recording.find({'_id': {'$in': self.classifier.training_sets}})
+        recordings = await future.to_list(None)
+        return [
+            {'channel_id': str(recording.channel_id), 'created': {'$gte': recording.started, '$lt': recording.stopped}}
+            for recording in recordings]
+
+    async def load_test_data(self):
+        message_cursor = Message.find({'_id': {'$in': self.classifier.test_set}})
+        return await DataSource.load_data(message_cursor)
+
+    async def load_train_data(self):
+        message_cursor = Message.find({'_id': {'$in': self.classifier.train_set}})
+        return await DataSource.load_data(message_cursor)
 
     @staticmethod
-    async def learn(classifier):
-        trainer = Trainer(classifier)
-        trainer.ensure_configured()
+    async def load_data(data_cursor):
+        data = []
+        target = []
+        async for message in data_cursor:
+            data.append(message.content)
+            target.append(message.label - 1)
 
-        await trainer.learn()
-
-        return await trainer.messages_for_mentoring()
+        return data, target

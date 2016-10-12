@@ -19,7 +19,7 @@ class ClassifierSettings extends Component {
       selected_recordings: null
     }
     this.onSaveClicked = this.onSaveClicked.bind(this)
-    this.onTestClicked = this.onTestClicked.bind(this)
+    this.onResetClicked = this.onResetClicked.bind(this)
     this.onValueChange = this.onValueChange.bind(this)
     this.recordingOptions = this.recordingOptions.bind(this)
     this.setStateFromClassifier = this.setStateFromClassifier.bind(this)
@@ -98,8 +98,17 @@ class ClassifierSettings extends Component {
     this.props.updateClassifier(classifier.id, cls_type, settings, training_sets)
   }
 
-  onTestClicked() {
+  onResetClicked() {
+    if(!this.state.selected_type) {
+      this.setState({selected_type: '1'})
+    }
 
+    this.setState({selected_ngram: '1'})
+    this.setState({selected_stopwords: 'true'})
+    this.setState({selected_idf: 'true'})
+    this.setState({selected_c: '4'})
+    this.setState({selected_alpha: '2'})
+    this.setState({selected_gamma: '5'})
   }
 
   onChangeRecordingSelection(value) {
@@ -231,7 +240,7 @@ class ClassifierSettings extends Component {
         <Row>
           <ButtonToolbar>
             <Button bsStyle="danger" onTouchTap={() => {this.onSaveClicked()}}>Update</Button>
-            <Button onTouchTap={() => {this.onTestClicked()}}>Test for best settings</Button>
+            <Button onTouchTap={() => {this.onResetClicked()}}>Reset to best settings</Button>
           </ButtonToolbar>
         </Row>
       </div>

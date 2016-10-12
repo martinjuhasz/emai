@@ -13,7 +13,8 @@ class ClassifierSettings extends Component {
       selected_stopwords: null,
       selected_idf: null,
       selected_c: null,
-      selected_alpha: null
+      selected_alpha: null,
+      selected_gamma: null
     }
     this.onSaveClicked = this.onSaveClicked.bind(this)
     this.onTestClicked = this.onTestClicked.bind(this)
@@ -43,6 +44,15 @@ class ClassifierSettings extends Component {
     if (classifier.settings && classifier.settings.hasOwnProperty('idf')) {
       this.setState({selected_idf: classifier.settings.idf.toString()})
     }
+    if (classifier.settings && classifier.settings.hasOwnProperty('c')) {
+      this.setState({selected_c: classifier.settings.c.toString()})
+    }
+    if (classifier.settings && classifier.settings.hasOwnProperty('gamma')) {
+      this.setState({selected_gamma: classifier.settings.gamma.toString()})
+    }
+    if (classifier.settings && classifier.settings.hasOwnProperty('alpha')) {
+      this.setState({selected_alpha: classifier.settings.alpha.toString()})
+    }
   }
 
   onValueChange(property, value) {
@@ -64,6 +74,16 @@ class ClassifierSettings extends Component {
     if(this.state.selected_idf !== null) {
       settings.idf = this.state.selected_idf === 'true'
     }
+    if(this.state.selected_c) {
+      settings.c = parseInt(this.state.selected_c)
+    }
+    if(this.state.selected_gamma) {
+      settings.gamma = parseInt(this.state.selected_gamma)
+    }
+    if(this.state.selected_alpha) {
+      settings.alpha = parseInt(this.state.selected_alpha)
+    }
+
     const cls_type = (this.state.selected_type === null) ? null : parseInt(this.state.selected_type)
     this.props.updateClassifier(classifier.id, settings, cls_type, null)
   }
@@ -94,21 +114,58 @@ class ClassifierSettings extends Component {
           </Col>
 
           <Col xs={12} sm={6} md={6}>
+            {(this.state.selected_type === '3' || this.state.selected_type === '2') &&
+              <Panel>
+                <FormGroup>
+                  <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                    C
+                  </Col>
+                  <Col xs={12} sm={10} md={10}>
+                    <Radio inline checked={this.state.selected_c === '1'} onChange={() => {this.onValueChange('selected_c', '1')}}>0.25</Radio>
+                    <Radio inline checked={this.state.selected_c === '2'} onChange={() => {this.onValueChange('selected_c', '2')}}>0.5</Radio>
+                    <Radio inline checked={this.state.selected_c === '3'} onChange={() => {this.onValueChange('selected_c', '3')}}>1</Radio>
+                    <Radio inline checked={this.state.selected_c === '4'} onChange={() => {this.onValueChange('selected_c', '4')}}>2</Radio>
+                    <Radio inline checked={this.state.selected_c === '5'} onChange={() => {this.onValueChange('selected_c', '5')}}>4</Radio>
+                  </Col>
+                  <Clearfix />
+                </FormGroup>
+              </Panel>
+            }
+            {this.state.selected_type === '2' &&
             <Panel>
               <FormGroup>
                 <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
-                  C
+                  Gamma
                 </Col>
                 <Col xs={12} sm={10} md={10}>
-                  <Radio inline checked={this.state.selected_c === '1'} onChange={() => {this.onValueChange('selected_c', '1')}}>0.25</Radio>
-                  <Radio inline checked={this.state.selected_c === '2'} onChange={() => {this.onValueChange('selected_c', '2')}}>0.5</Radio>
-                  <Radio inline checked={this.state.selected_c === '3'} onChange={() => {this.onValueChange('selected_c', '3')}}>1</Radio>
-                  <Radio inline checked={this.state.selected_c === '4'} onChange={() => {this.onValueChange('selected_c', '4')}}>2</Radio>
-                  <Radio inline checked={this.state.selected_c === '5'} onChange={() => {this.onValueChange('selected_c', '5')}}>4</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '1'} onChange={() => {this.onValueChange('selected_gamma', '1')}}>auto</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '2'} onChange={() => {this.onValueChange('selected_gamma', '2')}}>0.01</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '3'} onChange={() => {this.onValueChange('selected_gamma', '3')}}>0.1</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '4'} onChange={() => {this.onValueChange('selected_gamma', '4')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '5'} onChange={() => {this.onValueChange('selected_gamma', '5')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '6'} onChange={() => {this.onValueChange('selected_gamma', '6')}}>0.75</Radio>
                 </Col>
                 <Clearfix />
               </FormGroup>
             </Panel>
+            }
+            {this.state.selected_type === '1' &&
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                  Alpha
+                </Col>
+                <Col xs={12} sm={10} md={10}>
+                  <Radio inline checked={this.state.selected_alpha === '1'} onChange={() => {this.onValueChange('selected_alpha', '1')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '2'} onChange={() => {this.onValueChange('selected_alpha', '2')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '3'} onChange={() => {this.onValueChange('selected_alpha', '3')}}>1</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '4'} onChange={() => {this.onValueChange('selected_alpha', '4')}}>2</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '5'} onChange={() => {this.onValueChange('selected_alpha', '5')}}>4</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+            }
           </Col>
         </Row>
         <Row>

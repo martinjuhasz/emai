@@ -48,7 +48,7 @@ class TrainingService(object):
             classifier.type = new_data['type']
 
         if 'settings' in new_data:
-            if any(setting in new_data['settings'] for setting in ('ngram_range', 'stop_words', 'idf')):
+            if any(setting in new_data['settings'] for setting in ('ngram_range', 'stop_words', 'idf', 'c', 'alpha', 'gamma')):
                 classifier.settings = new_data['settings']
 
         # Erstellung eines neuen Testsets
@@ -70,7 +70,7 @@ class TrainingService(object):
         trainer = Trainer(classifier)
         trainer.ensure_configured()
 
-        await trainer.train_until(train_count, test_iterative=True)
+        await trainer.train_until(train_count)
 
     @staticmethod
     async def learn(classifier):
@@ -165,6 +165,16 @@ class Trainer(object):
         if 'idf' not in self.classifier.settings:
             raise ValueError('Classifier Settings idf must be set')
 
+        classifier_type = ClassifierType(self.classifier.type)
+        if classifier_type == ClassifierType.LogisticRegression and not 'c' in self.classifier.settings:
+            raise ValueError('Classifier Settings C parameter must be set')
+        if classifier_type == ClassifierType.SupportVectorMachine and not 'c' in self.classifier.settings:
+            raise ValueError('Classifier Settings C parameter must be set')
+        if classifier_type == ClassifierType.SupportVectorMachine and not 'gamma' in self.classifier.settings:
+            raise ValueError('Classifier Settings Gamma parameter must be set')
+        if classifier_type == ClassifierType.NaiveBayes and not 'alpha' in self.classifier.settings:
+            raise ValueError('Classifier Settings Alpha parameter must be set')
+
     async def ensure_train_set(self):
         if self.classifier.has_train_set():
             return
@@ -198,11 +208,64 @@ class Trainer(object):
         """
         classifier_type = ClassifierType(self.classifier.type)
         if classifier_type == ClassifierType.LogisticRegression:
-            return LogisticRegression(random_state=42, C=2)
+            c_param = self.get_free_param('c')
+            return LogisticRegression(random_state=42, C=c_param)
         elif classifier_type == ClassifierType.SupportVectorMachine:
-            return SVC(random_state=10, C=2, gamma=0.5)
+            c_param = self.get_free_param('c')
+            gamma_param = self.get_free_param('gamma')
+            return SVC(random_state=10, C=c_param, gamma=gamma_param)
         elif classifier_type == ClassifierType.NaiveBayes:
-            return MultinomialNB(alpha=0.5)
+            alpha_param = self.get_free_param('alpha')
+            return MultinomialNB(alpha=alpha_param)
+
+    def get_free_param(self, param):
+        if param == 'c':
+            if 'c' not in self.classifier.settings:
+                return 2
+            elif self.classifier.settings == 1:
+                return 0.25
+            elif self.classifier.settings == 2:
+                return 0.5
+            elif self.classifier.settings == 3:
+                return 1
+            elif self.classifier.settings == 4:
+                return 2
+            elif self.classifier.settings == 5:
+                return 4
+            else:
+                return 2
+        elif param == 'gamma':
+            if 'gamma' not in self.classifier.settings:
+                return 0.5
+            elif self.classifier.settings == 1:
+                return 'auto'
+            elif self.classifier.settings == 2:
+                return 0.01
+            elif self.classifier.settings == 3:
+                return 0.1
+            elif self.classifier.settings == 4:
+                return 0.25
+            elif self.classifier.settings == 5:
+                return 0.5
+            elif self.classifier.settings == 6:
+                return 0.75
+            else:
+                return 0.5
+        elif param == 'alpha':
+            if 'alpha' not in self.classifier.settings:
+                return 0.5
+            elif self.classifier.settings == 1:
+                return 0.25
+            elif self.classifier.settings == 2:
+                return 0.5
+            elif self.classifier.settings == 3:
+                return 1
+            elif self.classifier.settings == 4:
+                return 2
+            elif self.classifier.settings == 5:
+                return 4
+            else:
+                return 0.5
 
     async def save(self):
         """
@@ -487,11 +550,7 @@ class DataSource(object):
         messages_data = [message.content for message in messages]
 
         # Vorhersagen auf Chatdaten
-        classifier_type = ClassifierType(self.classifier.type)
-        if classifier_type == ClassifierType.NaiveBayes:
-            confidences = np.abs(estimator.decision_function(messages_data))
-        else:
-            confidences = estimator.predict_proba(messages_data)
+        confidences = estimator.predict_proba(messages_data)
 
         # Sortieren mit Entropy und zurückgeben des höchsten Wertes
         indexed_confidences = [(i, e) for i, e in enumerate(confidences)]

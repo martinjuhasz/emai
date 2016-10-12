@@ -48,37 +48,37 @@ class ClassifierPerformance extends Component {
       <div className="lhspace">
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits">5671</div>
+            <div className="digits">0000</div>
             <div className="description">total</div>
           </Panel>
         </Col>
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits">1815</div>
+            <div className="digits">0000</div>
             <div className="description">unlabeled</div>
           </Panel>
         </Col>
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits">3856</div>
+            <div className="digits">0000</div>
             <div className="description">labeled</div>
           </Panel>
         </Col>
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits success">1949</div>
+            <div className="digits success">0000</div>
             <div className="description">positiv</div>
           </Panel>
         </Col>
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits danger">445</div>
+            <div className="digits danger">0000</div>
             <div className="description">negativ</div>
           </Panel>
         </Col>
         <Col xs={4} sm={4} md={4}>
           <Panel className="stats">
-            <div className="digits warning">1462</div>
+            <div className="digits warning">0000</div>
             <div className="description">neutral</div>
           </Panel>
         </Col>

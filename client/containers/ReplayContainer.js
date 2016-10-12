@@ -66,37 +66,37 @@ class ReplayContainer extends Component {
           <div className="hspace">
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits">3856</div>
+                <div className="digits">0000</div>
                 <div className="description">total</div>
               </Panel>
             </Col>
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits">1815</div>
+                <div className="digits">0000</div>
                 <div className="description">unlabeled</div>
               </Panel>
             </Col>
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits">3856</div>
+                <div className="digits">0000</div>
                 <div className="description">labeled</div>
               </Panel>
             </Col>
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits success">732</div>
+                <div className="digits success">0000</div>
                 <div className="description">correct</div>
               </Panel>
             </Col>
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits danger">32</div>
+                <div className="digits danger">0000</div>
                 <div className="description">failed</div>
               </Panel>
             </Col>
             <Col xs={4} sm={4} md={4}>
               <Panel className="stats">
-                <div className="digits">321</div>
+                <div className="digits">0000</div>
                 <div className="description">unknown</div>
               </Panel>
             </Col>

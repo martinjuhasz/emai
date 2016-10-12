@@ -124,9 +124,9 @@ export function trainClassifier(classifier_id, limit) {
   }
 }
 
-export function updateClassifier(classifier_id, settings, type) {
+export function updateClassifier(classifier_id, type, settings, training_sets) {
   return dispatch => {
-    emai.updateClassifier(classifier_id, settings, type, classifier => {
+    emai.updateClassifier(classifier_id, type, settings, training_sets, classifier => {
       dispatch(receiveClassifier(classifier))
     })
   }

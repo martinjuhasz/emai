@@ -2,6 +2,7 @@ import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { FormGroup, Radio, ControlLabel, Col, Panel, Clearfix, ButtonToolbar, Button, Row } from 'react-bootstrap/lib'
 import { updateClassifier } from '../actions'
+import Select from 'react-select';
 
 class ClassifierSettings extends Component {
 
@@ -14,13 +15,15 @@ class ClassifierSettings extends Component {
       selected_idf: null,
       selected_c: null,
       selected_alpha: null,
-      selected_gamma: null
+      selected_gamma: null,
+      selected_recordings: null
     }
     this.onSaveClicked = this.onSaveClicked.bind(this)
     this.onTestClicked = this.onTestClicked.bind(this)
     this.onValueChange = this.onValueChange.bind(this)
-    this.classifierSettings = this.classifierSettings.bind(this)
+    this.recordingOptions = this.recordingOptions.bind(this)
     this.setStateFromClassifier = this.setStateFromClassifier.bind(this)
+    this.onChangeRecordingSelection = this.onChangeRecordingSelection.bind(this)
   }
 
   componentDidMount() {
@@ -53,6 +56,13 @@ class ClassifierSettings extends Component {
     if (classifier.settings && classifier.settings.hasOwnProperty('alpha')) {
       this.setState({selected_alpha: classifier.settings.alpha.toString()})
     }
+
+    const recordings = this.props.recordings
+      .filter(recording => classifier.training_sets.includes(recording.id))
+      .map(recording => {
+        return { value: recording.id, label: `${recording.display_name} - ${recording.id}` }
+      })
+    this.setState({selected_recordings: recordings})
   }
 
   onValueChange(property, value) {
@@ -83,17 +93,22 @@ class ClassifierSettings extends Component {
     if(this.state.selected_alpha) {
       settings.alpha = parseInt(this.state.selected_alpha)
     }
-
+    const training_sets = this.state.selected_recordings.map(selection => selection.value)
+    console.log(training_sets)
     const cls_type = (this.state.selected_type === null) ? null : parseInt(this.state.selected_type)
-    this.props.updateClassifier(classifier.id, settings, cls_type, null)
+    this.props.updateClassifier(classifier.id, cls_type, settings, training_sets)
   }
 
   onTestClicked() {
 
   }
 
-  classifierSettings() {
+  onChangeRecordingSelection(value) {
+    this.setState({selected_recordings: value})
+  }
 
+  recordingOptions() {
+    return this.props.recordings.map(recording => { return { value: recording.id, label: `${recording.display_name} - ${recording.id}` }})
   }
 
   render() {
@@ -114,58 +129,13 @@ class ClassifierSettings extends Component {
           </Col>
 
           <Col xs={12} sm={6} md={6}>
-            {(this.state.selected_type === '3' || this.state.selected_type === '2') &&
-              <Panel>
-                <FormGroup>
-                  <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
-                    C
-                  </Col>
-                  <Col xs={12} sm={10} md={10}>
-                    <Radio inline checked={this.state.selected_c === '1'} onChange={() => {this.onValueChange('selected_c', '1')}}>0.25</Radio>
-                    <Radio inline checked={this.state.selected_c === '2'} onChange={() => {this.onValueChange('selected_c', '2')}}>0.5</Radio>
-                    <Radio inline checked={this.state.selected_c === '3'} onChange={() => {this.onValueChange('selected_c', '3')}}>1</Radio>
-                    <Radio inline checked={this.state.selected_c === '4'} onChange={() => {this.onValueChange('selected_c', '4')}}>2</Radio>
-                    <Radio inline checked={this.state.selected_c === '5'} onChange={() => {this.onValueChange('selected_c', '5')}}>4</Radio>
-                  </Col>
-                  <Clearfix />
-                </FormGroup>
-              </Panel>
-            }
-            {this.state.selected_type === '2' &&
-            <Panel>
-              <FormGroup>
-                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
-                  Gamma
-                </Col>
-                <Col xs={12} sm={10} md={10}>
-                  <Radio inline checked={this.state.selected_gamma === '1'} onChange={() => {this.onValueChange('selected_gamma', '1')}}>auto</Radio>
-                  <Radio inline checked={this.state.selected_gamma === '2'} onChange={() => {this.onValueChange('selected_gamma', '2')}}>0.01</Radio>
-                  <Radio inline checked={this.state.selected_gamma === '3'} onChange={() => {this.onValueChange('selected_gamma', '3')}}>0.1</Radio>
-                  <Radio inline checked={this.state.selected_gamma === '4'} onChange={() => {this.onValueChange('selected_gamma', '4')}}>0.25</Radio>
-                  <Radio inline checked={this.state.selected_gamma === '5'} onChange={() => {this.onValueChange('selected_gamma', '5')}}>0.5</Radio>
-                  <Radio inline checked={this.state.selected_gamma === '6'} onChange={() => {this.onValueChange('selected_gamma', '6')}}>0.75</Radio>
-                </Col>
-                <Clearfix />
-              </FormGroup>
-            </Panel>
-            }
-            {this.state.selected_type === '1' &&
-            <Panel>
-              <FormGroup>
-                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
-                  Alpha
-                </Col>
-                <Col xs={12} sm={10} md={10}>
-                  <Radio inline checked={this.state.selected_alpha === '1'} onChange={() => {this.onValueChange('selected_alpha', '1')}}>0.25</Radio>
-                  <Radio inline checked={this.state.selected_alpha === '2'} onChange={() => {this.onValueChange('selected_alpha', '2')}}>0.5</Radio>
-                  <Radio inline checked={this.state.selected_alpha === '3'} onChange={() => {this.onValueChange('selected_alpha', '3')}}>1</Radio>
-                  <Radio inline checked={this.state.selected_alpha === '4'} onChange={() => {this.onValueChange('selected_alpha', '4')}}>2</Radio>
-                  <Radio inline checked={this.state.selected_alpha === '5'} onChange={() => {this.onValueChange('selected_alpha', '5')}}>4</Radio>
-                </Col>
-                <Clearfix />
-              </FormGroup>
-            </Panel>
-            }
+            <Select
+              multi={true}
+              name="form-field-name"
+              value={this.state.selected_recordings}
+              options={this.recordingOptions()}
+              onChange={this.onChangeRecordingSelection}
+            />
           </Col>
         </Row>
         <Row>
@@ -203,6 +173,60 @@ class ClassifierSettings extends Component {
                 <Clearfix />
               </FormGroup>
             </Panel>
+          </Col>
+          <Col xs={12} sm={6} md={6}>
+            {(this.state.selected_type === '3' || this.state.selected_type === '2') &&
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                  C
+                </Col>
+                <Col xs={12} sm={10} md={10}>
+                  <Radio inline checked={this.state.selected_c === '1'} onChange={() => {this.onValueChange('selected_c', '1')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_c === '2'} onChange={() => {this.onValueChange('selected_c', '2')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_c === '3'} onChange={() => {this.onValueChange('selected_c', '3')}}>1</Radio>
+                  <Radio inline checked={this.state.selected_c === '4'} onChange={() => {this.onValueChange('selected_c', '4')}}>2</Radio>
+                  <Radio inline checked={this.state.selected_c === '5'} onChange={() => {this.onValueChange('selected_c', '5')}}>4</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+            }
+            {this.state.selected_type === '2' &&
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                  Gamma
+                </Col>
+                <Col xs={12} sm={10} md={10}>
+                  <Radio inline checked={this.state.selected_gamma === '1'} onChange={() => {this.onValueChange('selected_gamma', '1')}}>auto</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '2'} onChange={() => {this.onValueChange('selected_gamma', '2')}}>0.01</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '3'} onChange={() => {this.onValueChange('selected_gamma', '3')}}>0.1</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '4'} onChange={() => {this.onValueChange('selected_gamma', '4')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '5'} onChange={() => {this.onValueChange('selected_gamma', '5')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_gamma === '6'} onChange={() => {this.onValueChange('selected_gamma', '6')}}>0.75</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+            }
+            {this.state.selected_type === '1' &&
+            <Panel>
+              <FormGroup>
+                <Col xs={12} sm={2} md={2} componentClass={ControlLabel}>
+                  Alpha
+                </Col>
+                <Col xs={12} sm={10} md={10}>
+                  <Radio inline checked={this.state.selected_alpha === '1'} onChange={() => {this.onValueChange('selected_alpha', '1')}}>0.25</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '2'} onChange={() => {this.onValueChange('selected_alpha', '2')}}>0.5</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '3'} onChange={() => {this.onValueChange('selected_alpha', '3')}}>1</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '4'} onChange={() => {this.onValueChange('selected_alpha', '4')}}>2</Radio>
+                  <Radio inline checked={this.state.selected_alpha === '5'} onChange={() => {this.onValueChange('selected_alpha', '5')}}>4</Radio>
+                </Col>
+                <Clearfix />
+              </FormGroup>
+            </Panel>
+            }
           </Col>
         </Row>
         <Row>

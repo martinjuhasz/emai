@@ -1,12 +1,15 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { byId } from '../reducers/classifiers'
-import { getReview, learnClassifier } from '../actions'
+import { getReview } from '../actions'
 import ClassifierSettings from '../components/ClassifierSettings'
-import ClassifierPerformance from '../components/ClassifierPerformance'
-import { ButtonToolbar, Button } from 'react-bootstrap/lib'
+import { getRecordings } from '../actions/recordings'
 
 class ClassifierDetailsContainer extends Component {
+
+  componentDidMount() {
+    this.props.getRecordings()
+  }
 
   render() {
     const { classifier } = this.props
@@ -22,7 +25,8 @@ class ClassifierDetailsContainer extends Component {
 }
 
 ClassifierDetailsContainer.propTypes = {
-  classifier: PropTypes.any
+  classifier: PropTypes.any,
+  getRecordings: PropTypes.func
 }
 
 function mapStateToProps(state, ownProps) {
@@ -32,5 +36,8 @@ function mapStateToProps(state, ownProps) {
 }
 
 export default connect(
-  mapStateToProps
+  mapStateToProps,
+  {
+    getRecordings
+  }
 )(ClassifierDetailsContainer)

@@ -8,6 +8,7 @@ import thunk from 'redux-thunk'
 import reducer from './reducers'
 import App from './containers/App'
 import injectTapEventPlugin from 'react-tap-event-plugin';
+import 'react-select/dist/react-select.css';
 
 // http://stackoverflow.com/a/34015469/988941
 injectTapEventPlugin();

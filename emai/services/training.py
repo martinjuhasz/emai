@@ -58,6 +58,9 @@ class TrainingService(object):
         await classifier.commit()
         await classifier.reset()
 
+
+
+
     @staticmethod
     async def delete_classifier(classifier):
         await classifier.delete()

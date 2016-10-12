@@ -4,6 +4,7 @@ Konfiguration von Logging und einem Config-Objekt welches die config.ini auslies
 import logging
 import sys
 from configparser import ConfigParser
+import os
 
 # Logging
 output_stream = sys.stderr
@@ -17,4 +18,4 @@ log.addHandler(handler)
 
 # Config
 config = ConfigParser()
-config.read('../config.ini')
+config.read(os.path.join(os.path.dirname(__file__), '..', 'config.ini'))

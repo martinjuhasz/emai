@@ -94,7 +94,6 @@ class ClassifierSettings extends Component {
       settings.alpha = parseInt(this.state.selected_alpha)
     }
     const training_sets = this.state.selected_recordings.map(selection => selection.value)
-    console.log(training_sets)
     const cls_type = (this.state.selected_type === null) ? null : parseInt(this.state.selected_type)
     this.props.updateClassifier(classifier.id, cls_type, settings, training_sets)
   }

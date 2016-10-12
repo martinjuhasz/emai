@@ -6,7 +6,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "lint": "eslint ./client",
-    "compile": "webpack",
+    "compile": "webpack && uglifyjs ./static/assets/app.js -c -m -o ./static/assets/app.min.js --source-map ./static/assets/app.min.js.map",
     "start": "npm run dev",
     "dev": "node --harmony build/webpack-dev-server",
     "dev:client": "webpack-dev-server --display-error-details --progress --colors --port 8081 --host 0.0.0.0",
@@ -46,6 +46,7 @@
     "redux-thunk": "^2.1.0",
     "style-loader": "^0.13.1",
     "transfer-webpack-plugin": "^0.1.4",
+    "uglify-js": "^2.7.3",
     "webpack": "^1.13.1",
     "webpack-dev-server": "^1.14.1"
   }

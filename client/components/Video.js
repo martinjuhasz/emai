@@ -47,7 +47,6 @@ export default class Video extends Component {
     if(!video_id) { return null }
 
     const videoControls = {controls: controls, autoPlay: autoplay}
-    console.log(autoplay)
     return (
       <ResponsiveEmbed a16by9>
         <video ref='video' onTimeUpdate={this.onTimeUpdate} onSeeked={this.onSeeked} {...videoControls}>

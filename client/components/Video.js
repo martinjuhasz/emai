@@ -39,7 +39,9 @@ export default class Video extends Component {
   }
 
   onSeeked() {
-    this.props.onSeeked()
+    if(this.props.onSeeked) {
+      this.props.onSeeked()
+    }
   }
 
   render() {

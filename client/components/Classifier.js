@@ -22,6 +22,9 @@ class Classifier extends Component {
                 <Button><Glyphicon glyph="education"/> Train</Button>
               </LinkContainer>
             </ButtonGroup>
+            <ButtonGroup>
+              <Button bsStyle="danger" onTouchTap={() => this.props.onDeleteClicked()}><Glyphicon glyph="trash"/></Button>
+            </ButtonGroup>
           </ButtonToolbar>
         </Col>
       </Panel>
@@ -30,7 +33,8 @@ class Classifier extends Component {
 }
 
 Classifier.propTypes = {
-  classifier: PropTypes.any.isRequired
+  classifier: PropTypes.any.isRequired,
+  onDeleteClicked: PropTypes.func,
 }
 
 

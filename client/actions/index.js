@@ -86,6 +86,22 @@ export function getClassifiers() {
   }
 }
 
+export function deleteClassifier(classifier_id) {
+  return dispatch => {
+    emai.deleteClassifier(classifier_id, () => {
+      dispatch(getClassifiers())
+    })
+  }
+}
+
+export function createClassifier(title) {
+  return dispatch => {
+    emai.createClassifier(title, () => {
+      dispatch(getClassifiers())
+    })
+  }
+}
+
 function receiveClassifiers(classifiers) {
   return {
     type: types.RECEIVE_CLASSIFIERS,

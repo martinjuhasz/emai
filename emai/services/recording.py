@@ -58,8 +58,18 @@ class RecordingService(object):
     async def start_recording(self, channel):
         return await self.recorder.record_channel(channel)
 
-    def stop_recording(self, channel):
-        self.recorder.stop_channel(channel)
+    async def stop_recording(self, recording):
+        recording.stopped = datetime.utcnow()
+        await recording.commit()
+        self.recorder.stop_channel(recording.channel_name)
+
+    async def delete_recording(self, recording):
+        if not recording.stopped:
+            await self.stop_recording(recording)
+
+        await Message.delete_by_recording(recording)
+        await recording.remove()
+
 
 
 class Recorder(object):

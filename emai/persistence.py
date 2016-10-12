@@ -156,6 +156,14 @@ class Message(Document):
     predicted_label = fields.IntField()
 
     @staticmethod
+    async def delete_by_recording(recording):
+        filter = {
+            'created': {'$gte': recording.started, '$lt': recording.stopped},
+            'channel_id': str(recording.channel_id)
+        }
+        await Message.collection.remove(filter)
+
+    @staticmethod
     async def get_random(channel_filter, label=None, amount=1):
         """
         Gibt zufällige Nachrichten der gewünschten Kanäle zurück

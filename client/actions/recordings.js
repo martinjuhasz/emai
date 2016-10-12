@@ -15,3 +15,27 @@ export function getRecordings() {
     })
   }
 }
+
+export function deleteRecording(recording_id) {
+  return dispatch => {
+    emai.deleteRecording(recording_id, () => {
+      dispatch(getRecordings())
+    })
+  }
+}
+
+export function startRecording(username) {
+  return dispatch => {
+    emai.startRecording(username, () => {
+      dispatch(getRecordings())
+    })
+  }
+}
+
+export function stopRecording(recording_id) {
+  return dispatch => {
+    emai.stopRecording(recording_id, () => {
+      dispatch(getRecordings())
+    })
+  }
+}

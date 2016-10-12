@@ -6,7 +6,7 @@ from datetime import datetime
 import aiohttp_cors
 from aiohttp_utils import Response
 from emai import services
-from emai.twitch import TwitchAPI
+from emai.services.recording import TwitchAPI
 from emai.persistence import Recording, Classifier, Message, load_json, to_objectid
 from emai.services.message import MessageService
 from emai.services.prediction import PredictionService
@@ -31,7 +31,7 @@ def setup(app):
 
     cors.add(app.router.add_route('GET', '/recordings', RecorderResource.get))
     cors.add(app.router.add_route('POST', '/recordings', RecorderResource.create))
-    # TODO: DELETE RECORDING
+    cors.add(app.router.add_route('DELETE', '/recordings/{recording_id}', RecorderResource.delete))
     cors.add(app.router.add_route('PUT', '/recordings/{recording_id}/stop', RecorderResource.stop))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/stats', RecorderResource.stats))
     cors.add(app.router.add_route('GET', '/recordings/{recording_id}/samples/{interval}', RecorderResource.samples))
@@ -42,7 +42,7 @@ def setup(app):
 
     cors.add(app.router.add_route('GET', '/classifiers', ClassifierResource.get))
     cors.add(app.router.add_route('POST', '/classifiers', ClassifierResource.create))
-    # TODO: DELETE CLASSIFIER
+    cors.add(app.router.add_route('DELETE', '/classifiers/{classifier_id}', ClassifierResource.delete))
     cors.add(app.router.add_route('PUT', '/classifiers/{classifier_id}', ClassifierResource.update))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/train', ClassifierResource.train))
     cors.add(app.router.add_route('POST', '/classifiers/{classifier_id}/learn', ClassifierResource.learn))
@@ -55,7 +55,7 @@ class Resource(object):
 class RecorderResource(Resource):
     @staticmethod
     async def get(request):
-        recordings = await Recording.find().to_list(None)
+        recordings = await Recording.find().sort([('_id', -1)]).to_list(None)
         return Response(recordings)
 
     @staticmethod
@@ -73,8 +73,10 @@ class RecorderResource(Resource):
 
         # check if channel exists on twitch
         channel_details = await TwitchAPI.get_channel_details(channel_name)
-        if not channel_details:
-            return Response(status=422)
+        if not channel_details or ('status' in channel_details and isinstance(channel_details['status'],
+                                                                              int) and channel_details[
+            'status'] >= 400):
+            return Response(status=404)
 
         # start recording
         recording_service = request.app[services.recording.APP_SERVICE_KEY]
@@ -84,6 +86,23 @@ class RecorderResource(Resource):
         except ValidationError as error:
             log.error(error)
             return Response(status=500)
+
+    @staticmethod
+    async def delete(request):
+        # check url parameters
+        recording_id = to_objectid(request.match_info['recording_id'])
+        if not recording_id:
+            return Response(status=400)
+
+        # check if recording exists
+        recording = await Recording.find_one({'_id': recording_id})
+        if not recording:
+            return Response(status=404)
+
+        recording_service = request.app[services.recording.APP_SERVICE_KEY]
+        await recording_service.delete_recording(recording)
+
+        return Response()
 
     @staticmethod
     async def stop(request):
@@ -98,10 +117,8 @@ class RecorderResource(Resource):
             return Response(status=404)
 
         # stop recording
-        recording.stopped = datetime.utcnow()
-        await recording.commit()
         recording_service = request.app[services.recording.APP_SERVICE_KEY]
-        recording_service.stop_recording(recording.channel_name)
+        await recording_service.stop_recording(recording)
 
         return Response()
 
@@ -192,7 +209,7 @@ class MessageResource(Resource):
 class ClassifierResource(Resource):
     @staticmethod
     async def get(request):
-        classifiers = await Classifier.find().to_list(None)
+        classifiers = await Classifier.find().sort([('_id', -1)]).to_list(None)
         return Response(classifiers)
 
     @staticmethod
@@ -224,6 +241,8 @@ class ClassifierResource(Resource):
 
         # check if recording exists
         classifier = await Classifier.find_one({'_id': classifier_id})
+        if not classifier:
+            return Response(status=404)
 
         # check if malformed request
         body_data = await load_json(request)
@@ -239,6 +258,21 @@ class ClassifierResource(Resource):
         return Response(classifier)
 
     @staticmethod
+    async def delete(request):
+        # check url parameters
+        classifier_id = to_objectid(request.match_info['classifier_id'])
+        if not classifier_id:
+            return Response(status=400)
+
+        # check if classifier exists
+        classifier = await Classifier.find_one({'_id': classifier_id})
+        if not classifier:
+            return Response(status=404)
+
+        await TrainingService.delete_classifier(classifier)
+        return Response()
+
+    @staticmethod
     async def train(request):
         """
         Trainiert einen Klassifikator mit zufälligen Trainingsbeispielen bis hin zur angegebenen Grenze.
@@ -250,8 +284,10 @@ class ClassifierResource(Resource):
         if not classifier_id:
             return Response(status=400)
 
-        # check if recording exists
+        # check if classifier exists
         classifier = await Classifier.find_one({'_id': classifier_id})
+        if not classifier:
+            return Response(status=404)
 
         train_count = None
         if 'train_count' in request.GET:
@@ -279,8 +315,10 @@ class ClassifierResource(Resource):
         if not classifier_id:
             return Response(status=400)
 
-        # check if recording exists
+        # check if classifier exists
         classifier = await Classifier.find_one({'_id': classifier_id})
+        if not classifier:
+            return Response(status=404)
 
         try:
             messages = await TrainingService.learn(classifier)

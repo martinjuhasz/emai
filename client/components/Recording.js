@@ -13,18 +13,30 @@ export default class Recording extends Component {
         </Col>
         <Col xs={10} sm={10} md={10}>
           <h4>{recording.display_name} <small>{recording.started}</small></h4>
-          <ButtonToolbar>
-            <ButtonGroup>
-              <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
-                <Button>Show Samples</Button>
-              </LinkContainer>
-            </ButtonGroup>
-            <ButtonGroup>
-              <LinkContainer to={`/recordings/${recording.id}/replay`}>
-                <Button><Glyphicon glyph="play"/></Button>
-              </LinkContainer>
-            </ButtonGroup>
-          </ButtonToolbar>
+          {recording.stopped &&
+            <ButtonToolbar>
+              <ButtonGroup>
+                <LinkContainer to={`/recordings/${recording.id}/replay`}>
+                  <Button><Glyphicon glyph="play"/></Button>
+                </LinkContainer>
+              </ButtonGroup>
+              <ButtonGroup>
+                <LinkContainer to={`/recordings/${recording.id}/samples/10`}>
+                  <Button>Show Samples</Button>
+                </LinkContainer>
+              </ButtonGroup>
+              <ButtonGroup>
+                <Button bsStyle="danger" onTouchTap={() => this.props.onDeleteClicked()}><Glyphicon glyph="trash"/></Button>
+              </ButtonGroup>
+            </ButtonToolbar>
+          }
+          {!recording.stopped &&
+            <ButtonToolbar>
+              <ButtonGroup>
+                <Button onTouchTap={() => this.props.onStopClicked()}><Glyphicon glyph="stop"/></Button>
+              </ButtonGroup>
+            </ButtonToolbar>
+          }
         </Col>
       </Panel>
     )
@@ -38,5 +50,7 @@ Recording.propTypes = {
     started: PropTypes.string.isRequired,
     stopped: PropTypes.string.isRequired
   }),
+  onDeleteClicked: PropTypes.func,
+  onStopClicked: PropTypes.func,
   path: PropTypes.string.isRequired
 }

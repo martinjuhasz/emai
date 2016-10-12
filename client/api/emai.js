@@ -6,10 +6,8 @@ const sample = new Schema('sample');
 sample.define({
   messages: arrayOf(message)
 })
-const review = new Schema('review');
 
-const api_url = 'http://10.0.1.88:8082'
-/* const api_url = 'http://0.0.0.0:8082' */
+const api_url = 'http://0.0.0.0:8082'
 
 export default {
 
@@ -47,11 +45,63 @@ export default {
       .then(json => callback(json))
   },
 
+  startRecording(username, callback) {
+    return fetch(`${api_url}/recordings`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channel: username
+      })
+    }).then(() => callback())
+  },
+
+  stopRecording(recording_id, callback) {
+    const url = `${api_url}/recordings/${recording_id}/stop`
+    return fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(() => callback())
+  },
+
+  deleteRecording(recording_id, callback) {
+    return fetch(`${api_url}/recordings/${recording_id}`, {
+      method: 'DELETE'
+    })
+      .then(() => callback())
+  },
+
   getClassifiers(callback) {
     const url = `${api_url}/classifiers`
     return fetch(url)
       .then(response => response.json())
       .then(json => callback(json))
+  },
+
+  createClassifier(title, callback) {
+    return fetch(`${api_url}/classifiers`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        title: title
+      })
+    }).then(() => callback())
+  },
+
+  deleteClassifier(classifier_id, callback) {
+    return fetch(`${api_url}/classifiers/${classifier_id}`, {
+      method: 'DELETE'
+    })
+      .then(() => callback())
   },
 
   trainClassifier(classifier_id, limit, callback) {

@@ -12,7 +12,7 @@ from random import shuffle
 import numpy as np
 import scipy
 from bson import ObjectId
-from emai.persistence import Message, Recording, Performance
+from emai.persistence import Message, Recording, Performance, Classifier
 from emai.utils import log
 from sklearn import cross_validation
 from sklearn.feature_extraction.text import CountVectorizer
@@ -57,6 +57,10 @@ class TrainingService(object):
 
         await classifier.commit()
         await classifier.reset()
+
+    @staticmethod
+    async def delete_classifier(classifier):
+        await classifier.delete()
 
     @staticmethod
     async def train(classifier, train_count=None):

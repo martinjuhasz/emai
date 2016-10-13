@@ -100,7 +100,7 @@ class ClassifierSettings extends Component {
 
   onResetClicked() {
     if(!this.state.selected_type) {
-      this.setState({selected_type: '1'})
+      this.setState({selected_type: '3'})
     }
 
     this.setState({selected_ngram: '1'})

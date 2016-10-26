@@ -47,7 +47,7 @@
     "style-loader": "^0.13.1",
     "transfer-webpack-plugin": "^0.1.4",
     "uglify-js": "^2.7.3",
-    "webpack": "^1.13.1",
+    "webpack": "^1.13.3",
     "webpack-dev-server": "^1.14.1"
   }
 }

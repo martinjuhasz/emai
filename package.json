@@ -31,7 +31,7 @@
     "html-webpack-plugin": "^2.22.0",
     "isomorphic-fetch": "^2.2.1",
     "lodash": "^4.14.1",
-    "normalizr": "^2.2.1",
+    "normalizr": "^3.2.0",
     "react": "^15.2.1",
     "react-bootstrap": "^0.30.5",
     "react-chartjs": "git://github.com/reactjs/react-chartjs.git#chartjs-v2",
